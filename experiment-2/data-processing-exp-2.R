@@ -38,6 +38,6 @@ test.data$subject_id <- as.numeric(factor(test.data$subject_id))
 test.data$is_predictable <- as.numeric(factor(test.data$sequence_type, levels=c('unpredictable', 'predictable'))) - 1
 test.data <- test.data %>% filter(correct == 1) %>% mutate(subject_condition = as.numeric(factor(set_size))) %>% select(-sequence_type, -block, -correct, -set_size)
 
-write_csv(test.data, path="experiment-2/data/generated/for-jags.csv")
+write_csv(test.data, path="experiment-2/data/generated/for-jags-exp-2.csv")
 
 
