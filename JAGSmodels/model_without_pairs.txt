@@ -1,0 +1,37 @@
+model{
+
+for(i in 1:N){
+  rt[i] ~ dnorm(mu[i], v[i])
+  mu[i] = alpha[subject_id[i], is.predictable[i]+1] + rlr[i,is.predictable[i]+1]*exp(-lambda[subject_id[i]]*(t[i]))
+
+  rlr[i,1] = 1
+  rlr[i,2]=beta[subject_id[i]]/(1+exp(-gamma[subject_id[i]]*(t[i]-delta[subject_id[i]])))
+  
+  v[i] = 1/tau[subject_id[i]]
+}
+
+for(s in 1:S){
+  alpha[s,1] ~ dnorm(alpha_mu[condition[s],1], alpha_sigma[condition[s],1])
+  alpha[s,2] ~ dnorm(alpha_mu[condition[s],2], alpha_sigma[condition[s],2])
+  lambda[s] ~ dexp(gamma_1_lambda[condition[s]])
+  gamma[s] ~ dexp(gamma_2_lambda[condition[s]])
+  beta[s] ~ dbeta(beta_a[condition[s]], beta_b[condition[s]])
+  delta[s] ~ dunif(0, max_t[s])
+  tau[s] ~ dgamma(2,100)
+}
+
+for(c in 1:C){
+  alpha_mu[c,1] ~ dunif(0, 2000)
+  alpha_mu[c,2] ~ dunif(0, 2000)
+  alpha_percision[c,1] ~ dgamma(2,2)
+  alpha_percision[c,2] ~ dgamma(2,2)
+  
+  alpha_sigma[c,1] = 1/alpha_percision[c,1]
+  alpha_sigma[c,2] = 1/alpha_percision[c,2]
+  
+  gamma_1_lambda[c]~ dunif(0,20)
+  gamma_2_lambda[c]~ dunif(0,20)
+  beta_a[c] ~ dunif(0,100)
+  beta_b[c] ~ dunif(0,100)
+}
+}
