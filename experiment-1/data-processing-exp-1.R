@@ -10,7 +10,7 @@ n_subjects <- length(unique(data.all$subject))
 
 data.test <- data.all %>% filter(practice==0)
 
-data.test$t <- rep(as.vector(sapply(1:72, function(x){return(rep(x,12))})), n_subjects)
+data.test$t <- rep(as.vector(sapply(0:71, function(x){return(rep(x,12))})), n_subjects)
 
 # JAGS data only ####
 

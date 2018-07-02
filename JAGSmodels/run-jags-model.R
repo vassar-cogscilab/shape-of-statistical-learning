@@ -11,8 +11,8 @@ data.for.jags <-list(rt = data$rt,
   t = data$t,
   N = length(data$rt),
   S = length(unique(data$subject_id)),
-  C = length(unique(data$cond)),
-  condition = (data%>%group_by(subject_id) %>% summarise(cond = unique(cond)) %>% select(cond) %>% as.matrix)[,1],
+  C = length(unique(data$subject_condition)),
+  condition = data$subject_condition,
   max_t = (data%>%group_by(subject_id)%>% summarise(max_t = max(t)) %>% select(max_t) %>% as.matrix)[,1],
   n.pairs = (data %>% group_by(subject_id) %>% summarise(n.pairs = length(unique(pair))) %>% select(n.pairs) %>% as.matrix)[,1]
 )
