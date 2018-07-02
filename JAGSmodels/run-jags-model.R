@@ -1,23 +1,33 @@
-#subject_id,rt,pair,target_index,t,is_predictable,subject_condition
-
 library(runjags)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(coda)
 
-data.for.jags <-list(rt = sub$rt,
-  subject_id = sub$subject_id,
-  is.predictable = sub$is.predictable,
-  t = sub$t,
-  N = length(sub$rt),
-  S = length(unique(sub$subject_id)),
-  C = length(unique(sub$cond)),
-  condition = sub%>%group_by(subject_id) %>% summarise(cond = unique(cond)) %>% select(cond) %>% as.matrix
+dataJags<-function(data){
+data.for.jags <-list(rt = data$rt,
+  subject_id = data$subject_id,
+  is.predictable = data$is.predictable,
+  t = data$t,
+  N = length(data$rt),
+  S = length(unique(data$subject_id)),
+  C = length(unique(data$cond)),
+  condition = (data%>%group_by(subject_id) %>% summarise(cond = unique(cond)) %>% select(cond) %>% as.matrix)[,1],
+  max_t = (data%>%group_by(subject_id)%>% summarise(max_t = max(t)) %>% select(max_t) %>% as.matrix)[,1],
+  n.pairs = (data %>% group_by(subject_id) %>% summarise(n.pairs = length(unique(pair))) %>% select(n.pairs) %>% as.matrix)[,1]
 )
-params.to.monitor <- c('sd', 'alpha1', 'alpha2', 'lambda', 'beta', 'gamma', 'delta')
+return(data.for.jags)
+}
 
-jags.result <- run.jags('jags_model.txt', monitor=params.to.monitor, data=data.for.jags, n.chains=2,
-                        burnin=500, sample=100, adapt=1000)
+data.for.jags<-dataJags(sub)
+
+params.to.monitor <- c('v', 'alpha', 'gamma', 'beta', 'beta.learn','gamma.learn', 'delta')
+
+jags.result <- run.jags('jags-model-expexp.txt', monitor=params.to.monitor, data=data.for.jags, n.chains=2,
+                        burnin=50, sample=100, adapt=50)
 
 result <- as.matrix(as.mcmc(jags.result))
+save(jags.result, file = 'example_model_output')
+
+
+summary(j)
