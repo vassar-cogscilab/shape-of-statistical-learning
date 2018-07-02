@@ -16,7 +16,7 @@ for(s in 1:S){
   gamma[s] ~ dexp(gamma_lambda[condition[s]])
   gamma.learn[s] ~ dexp(gamma.learn_lambda[condition[s]])
   beta[s] ~ dbeta(beta_a[condition[s]], beta_b[condition[s]])
-  beta.learn[s] ~ dbeta(beta_a[condition[s]], beta_b[condition[s]])
+  beta.learn[s] ~ dbeta(beta.learn_a[condition[s]], beta.learn_b[condition[s]])
   delta[s] ~ dunif(0, max_t[s])
   tau[s] ~ dgamma(2,100)
 }
