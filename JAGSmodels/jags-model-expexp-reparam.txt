@@ -1,0 +1,57 @@
+model{
+  for(i in 1:N){
+    rt[i] ~ dnorm(mu[i], 1 / sigma[subject_id[i]] ^ 2)
+    
+    mu[i] = alpha[subject_id[i], is.predictable[i]+1] *  (1 + beta[subject_id[i]] * (exp(-gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,is.predictable[i]+1]))
+    
+    rlr[i,1] = 0 
+    rlr[i,2] = beta.learn[subject_id[i]]*(1-exp(-gamma.learn[subject_id[i]]*(t[i] - delta[subject_id[i]])))
+  }
+
+for(s in 1:S){
+    alpha[s,1] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
+    alpha[s,2] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
+  gamma[s] ~ dexp(gamma_lambda[condition[s]])
+  gamma.learn[s] ~ dexp(gamma.learn_lambda[condition[s]])
+  
+  beta[s] ~ dbeta(beta_a[condition[s]], beta_b[condition[s]])
+  beta.learn[s] ~ dbeta(beta.learn_a[condition[s]], beta.learn_b[condition[s]])
+  
+  delta.frac[s] ~ dbeta(delta_a[condition[s]],delta_b[condition[s]])
+  delta[s] = delta.frac[s]*max_t[s]
+  
+  sigma[s] ~ dgamma(2,.01)
+}
+
+for(c in 1:C){
+  alpha_mu[c] ~ dunif(0, 2000)
+  alpha_sigma[c] ~ dgamma(2, .01)
+  
+  gamma_lambda[c]~ dunif(0,100)
+  gamma.learn_lambda[c]~ dunif(0,100)
+  
+  beta.mode[c] ~ dbeta(2,2) # weak preference for middle values
+  beta.concentration[c] <- beta.concentration.k[c] + 2
+  beta.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
+
+  beta_a[c] <- beta.mode[c] * (beta.concentration[c]-2) + 1
+  beta_b[c] <- (1 - beta.mode[c]) * (beta.concentration[c]-2) + 1
+  
+  
+  beta.learn.mode[c] ~ dbeta(2,2) # weak preference for middle values
+  beta.learn.concentration[c] <- beta.concentration.k[c] + 2
+  beta.learn.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
+
+  beta.learn_a[c] <- beta.learn.mode[c] * (beta.learn.concentration[c]-2) + 1
+  beta.learn_b[c] <- (1 - beta.learn.mode[c]) * (beta.learn.concentration[c]-2) + 1
+  
+  delta.mode[c] ~ dbeta(1,2) # weak preference for low values
+  delta.concentration[c] <- delta.concentration.k[c] + 2
+  delta.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
+
+  delta_a[c] <- delta.mode[c] * (delta.concentration[c]-2) + 1
+  delta_b[c] <- (1 - delta.mode[c]) * (delta.concentration[c]-2) + 1
+  
+}
+
+}
