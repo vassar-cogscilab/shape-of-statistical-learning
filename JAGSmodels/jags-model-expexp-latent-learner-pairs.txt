@@ -1,0 +1,78 @@
+model{
+
+  for(i in 1:N){
+    rt[i] ~ dnorm(mu[i], 1 / sigma[subject_id[i]] ^ 2)
+    
+    mu[i] = alpha[subject_id[i], pair[i], is.predictable[i]+1] *  (1 + beta[subject_id[i]] * (exp(-gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,pair[i],is.predictable[i]+1]))
+    
+    for(p in 1:P){
+      rlr[i,p,1] = 0 
+      rlr[i,p,2] = is.learner[subject_id[i], pair[i]] * (beta.learn[subject_id[i],pair[i]] * (1 - exp(-gamma.learn[subject_id[i],pair[i]]*(t[i] - delta[subject_id[i],pair[i]]))))
+    }
+    
+  }
+
+  for(s in 1:S){
+    for(p in 1:P){
+      is.learner[s,p] ~ dbern(prob.learn.subject[s])
+      beta.learn[s,p] ~
+      gamma.learn[s,p] ~
+      delta[s,p] ~
+    }
+    is.learner[s] ~ dbern(prob.learn[condition[s]])
+  
+    alpha[s,1] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
+    alpha[s,2] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
+    
+    gamma[s] ~ dgamma(gamma.sh[s], gamma.ra[s])
+    gamma.sh[s] <- 1 + rate.mode[condition[s]] * gamma.ra[condition[s]]
+    gamma.ra[s] <- (rate.mode[condition[s]] + sqrt( rate.mode[condition[s]]^2 + 4*rate.sd[condition[s]]^2)) / (2 * rate.sd[condition[s]]^2)
+    
+    gamma.learn[s] ~ dgamma(gamma.learn.sh[s], gamma.learn.ra[s])
+    gamma.learn.sh[s] <- 1 + rate.learn.mode[condition[s]] * gamma.learn.ra[condition[s]]
+    gamma.learn.ra[s] <- (rate.learn.mode[condition[s]] + sqrt( rate.learn.mode[condition[s]]^2 + 4*rate.learn.sd[condition[s]]^2)) / (2 * rate.learn.sd[condition[s]]^2)
+    
+    beta[s] ~ dbeta(beta_a[condition[s]], beta_b[condition[s]])
+    beta.learn[s] ~ dbeta(beta.learn_a[condition[s]], beta.learn_b[condition[s]])
+    
+    delta.frac[s] ~ dbeta(delta_a[condition[s]],delta_b[condition[s]])
+    delta[s] = delta.frac[s]*max_t[s]
+    
+    sigma[s] ~ dgamma(2,.01)
+  }
+
+  for(c in 1:C){
+    prob.learn[c] ~ dbeta(1,2) # weak preference for low values
+  
+    alpha_mu[c] ~ dunif(0, 2000)
+    alpha_sigma[c] ~ dgamma(2, .01)
+    
+    rate.mode[c] ~ dexp(1)
+    rate.sd[c] ~ dgamma(1,1)
+    
+    rate.learn.mode[c] ~ dexp(1)
+    rate.learn.sd[c] ~ dgamma(1,1)
+    
+    beta.mode[c] ~ dbeta(2,2) # weak preference for middle values
+    beta.concentration[c] <- beta.concentration.k[c] + 2
+    beta.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
+  
+    beta_a[c] <- beta.mode[c] * (beta.concentration[c]-2) + 1
+    beta_b[c] <- (1 - beta.mode[c]) * (beta.concentration[c]-2) + 1
+    
+    beta.learn.mode[c] ~ dbeta(2,2) # weak preference for middle values
+    beta.learn.concentration[c] <- beta.concentration.k[c] + 2
+    beta.learn.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
+  
+    beta.learn_a[c] <- beta.learn.mode[c] * (beta.learn.concentration[c]-2) + 1
+    beta.learn_b[c] <- (1 - beta.learn.mode[c]) * (beta.learn.concentration[c]-2) + 1
+    
+    delta.mode[c] ~ dbeta(1,2) # weak preference for low values
+    delta.concentration[c] <- delta.concentration.k[c] + 2
+    delta.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
+  
+    delta_a[c] <- delta.mode[c] * (delta.concentration[c]-2) + 1
+    delta_b[c] <- (1 - delta.mode[c]) * (delta.concentration[c]-2) + 1
+  }
+
+}
