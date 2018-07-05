@@ -5,7 +5,7 @@ model{
     
     mu[i] = alpha[subject_id[i], pair[i], is_predictable[i]+1] *  (1 + beta[subject_id[i]] * (exp(-gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,pair[i],is_predictable[i]+1]))
     
-    for(p in 1:P){
+    for(p in 1:P[s]){
       rlr[i,p,1] = 0 
       rlr[i,p,2] = pair.learned[subject_id[i], pair[i]] * (beta.learn[subject_id[i],pair[i]] * (1 - exp(-gamma.learn[subject_id[i],pair[i]]*(t[i] - delta[subject_id[i],pair[i]]))))
     }
@@ -83,14 +83,23 @@ model{
   }
 
   for(c in 1:C){
+  
+    # intercepts ####
+    alpha_mu[c] ~ dnorm(1000, 1 / 500^2)T(0,2000) # weak prior
+    alpha_sigma[c] ~ dgamma(2, .01)
+    
+    # adaptation ####
+    
+    
+    # learning ####
+  
     condition.prob.learn.a[c] <- condition.prob.learn.mode[c] * (condition.prob.learn.concentration[c] - 2) + 1
     condition.prob.learn.b[c] <- (1 - condition.prob.learn.mode[c]) * (condition.prob.learn.concentration[c] - 2) + 1
     condition.prob.learn.mode[c] ~ dbeta(1,2) # weak preference for low values
     condition.prob.learn.concentration[c] <- condition.prob.learn.concentration.k[c] + 2
     condition.prob.learn.concentration.k[c] ~ dgamma ( , ) 
   
-    alpha_mu[c] ~ dunif(0, 2000)
-    alpha_sigma[c] ~ dgamma(2, .01)
+    
     
     rate.mode[c] ~ dexp(1)
     rate.sd[c] ~ dgamma(1,1)
