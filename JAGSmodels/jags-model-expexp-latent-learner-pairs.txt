@@ -12,38 +12,74 @@ model{
   }
 
   for(s in 1:S){
-    for(p in 1:P){
-      pair.learned[s,p] ~ dbern(subject.prob.learn[s])
-      beta.learn[s,p] ~ dbeta( )
-      gamma.learn[s,p] ~ dgamma( )
-      delta.frac[s,p] ~ dbeta(delta_a[s], delta_b[s])
-      delta[s,p] <- delta.frac[s,p] * max_t[s,p]
+  
+    # error in RT prediction at the subject level ###
+    
+    sigma[s] ~ dgamma(2, .01)
+    
+    # intercepts ####
+    
+    for(p in 1:P[s]){
+      alpha[s,p,1] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
+      alpha[s,p,2] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
+    }
+  
+    # adaptation curves ###
+    # same beta and gamma values for all adaptation
+    
+    adapt.beta[s] ~ dbeta(beta_a[condition[s]], beta_b[condition[s]])
+    
+    adapt.gamma[s] ~ dgamma(adapt.gamma.sh[s], adapt.gamma.ra[s])
+    adapt.gamma.sh[s] <- 1 + rate.mode[condition[s]] * adapt.gamma.ra[condition[s]]
+    adapt.gamma.ra[s] <- (rate.mode[condition[s]] + sqrt( rate.mode[condition[s]]^2 + 4*rate.sd[condition[s]]^2)) / (2 * rate.sd[condition[s]]^2)
+    
+    # learning curves ###
+    # item-level #
+    # binary learning indicator for each pair
+    # different beta, gamma, and delta values for each pair
+  
+    for(p in 1:P[s]){
+      # binary learning indicator
+      item.learned[s,p] ~ dbern(subject.prob.learn[s])
+      
+      # amount of learning for this pair (assuming it is learned)
+      item.beta.learn[s,p] ~ dbeta(subject.beta.learn.a[s], subject.beta.learn.b[s])
+      
+      # rate of learning for this pair (assuming it is learned)
+      item.gamma.learn[s,p] ~ dgamma(subject.gamma.learn.sh[s], subject.gamma.learn.ra[s])
+      
+      # onset of learning for this pair (assuming it is learned)
+      item.delta.frac[s,p] ~ dbeta(subject.delta.learn.a[s], subject.delta.learn.b[s])
+      item.delta[s,p] <- item.delta.frac[s,p] * max_t[s,p]
     }
     
-    subject.prob.learn[s] ~ dbeta(condition.prob.learn.a[condition[s]], condition.prob.learn.b[condition[b]])
+    # subject-level learning curves #
+    # hierarchical relationship, 
+    # item-level learning curves drawn from subject level distribution.
     
-  
-    alpha[s,1] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
-    alpha[s,2] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
+    # probability of items showing learning for this subject
+    subject.prob.learn[s] ~ dbeta(condition.prob.learn.a[condition[s]], condition.prob.learn.b[condition[s]])
     
-    gamma[s] ~ dgamma(gamma.sh[s], gamma.ra[s])
-    gamma.sh[s] <- 1 + rate.mode[condition[s]] * gamma.ra[condition[s]]
-    gamma.ra[s] <- (rate.mode[condition[s]] + sqrt( rate.mode[condition[s]]^2 + 4*rate.sd[condition[s]]^2)) / (2 * rate.sd[condition[s]]^2)
+    # amount of learning for items for this subject
+    subject.beta.learn.a[s] <- subject.beta.learn.mode[s] * (subject.beta.learn.concentration[s] - 2) + 1
+    subject.beta.learn.b[s] <- (1 - subject.beta.learn.mode[s]) * (subject.beta.learn.concentration[s] - 2) + 1
+    subject.beta.learn.mode[s] ~ dbeta(condition.beta.learn.mode.a[condition[s]], condition.beta.learn.mode.b[condition[s]])
+    subject.beta.learn.concentration[s] <- subject.beta.learn.concentration.k[s] + 2
+    subject.beta.learn.concentration.k[s] ~ dgamma(condition.beta.learn.concentration.sh[condition[s]], condition.beta.learn.concentration.ra[condition[s]])
     
-    gamma.learn[s] ~ dgamma(gamma.learn.sh[s], gamma.learn.ra[s])
-    gamma.learn.sh[s] <- 1 + rate.learn.mode[condition[s]] * gamma.learn.ra[condition[s]]
-    gamma.learn.ra[s] <- (rate.learn.mode[condition[s]] + sqrt( rate.learn.mode[condition[s]]^2 + 4*rate.learn.sd[condition[s]]^2)) / (2 * rate.learn.sd[condition[s]]^2)
+    # rate of learning for items for this subject
+    subject.gamma.learn.mode[s] ~ dgamma(condition.gamma.learn.mode.sh[s], condition.gamma.learn.mode.ra[s])
+    subject.gamma.learn.sd[s] ~ dgamma(condition.gamma.learn.sd.sh[s], condition.gamma.learn.sd.ra[s])
+    subject.gamma.learn.sh[s] <- 1 + rate.learn.mode[condition[s]] * gamma.learn.ra[condition[s]]
+    subject.gamma.learn.ra[s] <- (rate.learn.mode[condition[s]] + sqrt( rate.learn.mode[condition[s]]^2 + 4*rate.learn.sd[condition[s]]^2)) / (2 * rate.learn.sd[condition[s]]^2)
     
-    beta[s] ~ dbeta(beta_a[condition[s]], beta_b[condition[s]])
-    beta.learn[s] ~ dbeta(beta.learn_a[condition[s]], beta.learn_b[condition[s]])
+    # onset of learning for items for this subject
+    subject.delta.learn.a[s] <- subject.delta.learn.mode[s] * (subject.delta.learn.concentration[s] - 2) +
+    subject.delta.learn.b[s] <- (1 - subject.delta.learn.mode[s]) * (subject.delta.learn.concentration[s] - 2) +
+    subject.delta.learn.mode[s] ~ dbeta(condition.delta.learn.mode.a[condition[s]], condition.delta.learn.mode.b[condition[s]])
+    subject.delta.learn.concentration[s] <- subject.delta.learn.concentration.k[s] + 2
+    subject.delta.learn.concentration.k[s] ~ dgamma(condition.delta.learn.concentration.sh[condition[s]], condition.delta.learn.concentration.ra[condition[s]])
     
-    delta_a[s] <-
-    delta_b[s] <-
-    
-    delta.subject.mode[s] ~
-    delta.subject.concentration[s] ~
-    
-    sigma[s] ~ dgamma(2,.01)
   }
 
   for(c in 1:C){
