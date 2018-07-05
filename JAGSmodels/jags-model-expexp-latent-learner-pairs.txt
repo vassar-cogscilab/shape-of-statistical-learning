@@ -9,7 +9,6 @@ model{
       rlr[i,p,1] = 0 
       rlr[i,p,2] = is.learner[subject_id[i], pair[i]] * (beta.learn[subject_id[i],pair[i]] * (1 - exp(-gamma.learn[subject_id[i],pair[i]]*(t[i] - delta[subject_id[i],pair[i]]))))
     }
-    
   }
 
   for(s in 1:S){
@@ -19,7 +18,8 @@ model{
       gamma.learn[s,p] ~
       delta[s,p] ~
     }
-    is.learner[s] ~ dbern(prob.learn[condition[s]])
+    
+    prob.learn.subject[s] ~ dbeta(prob.learn[condition[s]])
   
     alpha[s,1] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
     alpha[s,2] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
