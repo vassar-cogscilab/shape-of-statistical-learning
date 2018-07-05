@@ -1,8 +1,8 @@
-intercept.adapt <- 1070
-intercept.learn <- 1189
+intercept.adapt <- 770
+intercept.learn <- 889
 
-beta.adapt <- 0.18
-rate.adapt <- 0.28
+beta.adapt <- 0.2
+rate.adapt <- 0.15
 
 beta.learn <- 0.4
 rate.learn <- .1
@@ -35,14 +35,23 @@ simulated.data <- plotting.data %>% filter(type %in% c('unpredictable', 'predict
 
 library(ggplot2)
 library(extrafont)
-font_import(pattern="Montserrat")
-loadfonts(device="win")
+#font_import(pattern="Montserrat")
+#loadfonts(device="win")
 
 ggplot(simulated.data, aes(x=t, y=rt, color=type)) +
   geom_point(size=5, alpha=0.5)+
   geom_line(data=(plotting.data %>% filter(type %in% c('unpredictable', 'predictable'))), aes(y=y), size=3)+
-  ylim(0,1500)+
+  ylim(0,1000)+
   scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
   labs(y="Response time (ms)", x="Time (discrete presentations of item)")+
   theme_bw(base_size = 28, base_family = "Montserrat")
-ggsave("model-simulated-data.png", device="png", path="general/", dpi=300, width=10, height=8, units="in")
+ggsave("model-simulated-data.png", device="png", path="general/", dpi=300, width=15, height=8, units="in")
+
+
+ggplot(plotting.data %>% filter(type=="relative learning rate"), aes(x=t, y=y)) +
+  geom_line(size=3)+
+  ylim(0,1)+
+  #scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
+  labs(y="Relative learning", x=NULL)+
+  theme_bw(base_size = 28, base_family = "Montserrat")
+ggsave("model-rlr.png", device="png", path="general/", dpi=300, width=15, height=4, units="in")
