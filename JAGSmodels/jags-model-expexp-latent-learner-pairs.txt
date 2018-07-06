@@ -5,7 +5,7 @@ model{
     
     mu[i] = alpha[subject_id[i], pair[i], is_predictable[i]+1] *  (1 + subject.adapt.beta[subject_id[i]] * (exp(-subject.adapt.gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,pair[i],is_predictable[i]+1]))
     
-    for(p in 1:P[s]){
+    for(p in 1:P[subject_id[i]]){
       rlr[i,p,1] = 0 
       rlr[i,p,2] = item.learned[subject_id[i], pair[i]] * (item.beta.learn[subject_id[i],pair[i]] * (1 - exp(-item.gamma.learn[subject_id[i],pair[i]]*(t[i] - item.delta[subject_id[i],pair[i]]))))
     }
@@ -71,12 +71,12 @@ model{
     # rate of learning for items for this subject
     subject.gamma.learn.mode[s] ~ dgamma(condition.gamma.learn.mode.sh[s], condition.gamma.learn.mode.ra[s])
     subject.gamma.learn.sd[s] ~ dgamma(condition.gamma.learn.sd.sh[s], condition.gamma.learn.sd.ra[s])
-    subject.gamma.learn.sh[s] <- 1 + condition.gamma.learn.mode[condition[s]] * subject.gamma.learn.ra[s]
-    subject.gamma.learn.ra[s] <- (condition.gamma.learn.mode[condition[s]] + sqrt( condition.gamma.learn.mode[condition[s]]^2 + 4*condition.gamma.learn.mode.sd[condition[s]]^2)) / (2 * condition.gamma.learn.mode.sd[condition[s]]^2)
-    
+    subject.gamma.learn.sh[s] <- 1 + subject.gamma.learn.mode[s] * subject.gamma.learn.ra[s]
+    subject.gamma.learn.ra[s] <- (subject.gamma.learn.mode[s] + sqrt( subject.gamma.learn.mode[s]^2 + 4*subject.gamma.learn.sd[s]^2)) / (2 * subject.gamma.learn.sd[s]^2)
+
     # onset of learning for items for this subject
-    subject.delta.learn.a[s] <- subject.delta.learn.mode[s] * (subject.delta.learn.concentration[s] - 2) +
-    subject.delta.learn.b[s] <- (1 - subject.delta.learn.mode[s]) * (subject.delta.learn.concentration[s] - 2) +
+    subject.delta.learn.a[s] <- subject.delta.learn.mode[s] * (subject.delta.learn.concentration[s] - 2) + 1
+    subject.delta.learn.b[s] <- (1 - subject.delta.learn.mode[s]) * (subject.delta.learn.concentration[s] - 2) + 1
     subject.delta.learn.mode[s] ~ dbeta(condition.delta.learn.mode.a[condition[s]], condition.delta.learn.mode.b[condition[s]])
     subject.delta.learn.concentration[s] <- subject.delta.learn.concentration.k[s] + 2
     subject.delta.learn.concentration.k[s] ~ dgamma(condition.delta.learn.concentration.sh[condition[s]], condition.delta.learn.concentration.ra[condition[s]])
@@ -148,7 +148,7 @@ model{
     condition.delta.learn.mode.concentration[c] <- condition.delta.learn.mode.concentration.k[c] + 2
     condition.delta.learn.mode.concentration.k[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
     
-    condition.delta.learn.concentration.sh[c] <- 1 + condition.delta.learn.concentration.mode[c] * condition.delta.learn.concentration.ra[s]
+    condition.delta.learn.concentration.sh[c] <- 1 + condition.delta.learn.concentration.mode[c] * condition.delta.learn.concentration.ra[c]
     condition.delta.learn.concentration.ra[c] <- (condition.delta.learn.concentration.mode[c] + sqrt( condition.delta.learn.concentration.mode[c]^2 + 4*condition.delta.learn.concentration.sd[c]^2)) / (2 * condition.delta.learn.concentration.sd[c]^2)
     condition.delta.learn.concentration.mode[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
     condition.delta.learn.concentration.sd[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
