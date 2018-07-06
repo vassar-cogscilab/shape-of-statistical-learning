@@ -123,18 +123,22 @@ model{
     condition.beta.learn.mode.concentration[c] <- condition.beta.learn.mode.concentration.k[c] + 2
     condition.beta.learn.mode.concentration.k[c] ~ dgamma ( , ) 
     
-    condition.beta.learn.concentration.sh[c] <- 1 + condition.beta.learn.concentration.mode[c] * condition.beta.learn.concentration.ra[s]
+    condition.beta.learn.concentration.sh[c] <- 1 + condition.beta.learn.concentration.mode[c] * condition.beta.learn.concentration.ra[c]
     condition.beta.learn.concentration.ra[c] <- (condition.beta.learn.concentration.mode[c] + sqrt( condition.beta.learn.concentration.mode[c]^2 + 4*condition.beta.learn.concentration.sd[c]^2)) / (2 * condition.beta.learn.concentration.sd[c]^2)
     condition.beta.learn.concentration.mode[c] ~ dgamma( , )
     condition.beta.learn.concentration.sd[c] ~ dgamma( , )
     
     # gamma learn
     
-    condition.gamma.learn.mode.sh[c]
-    condition.gamma.learn.mode.ra[c]
+    condition.gamma.learn.mode.sh[c] <- 1 + condition.gamma.learn.mode.mode[c] * condition.gamma.learn.mode.ra[c]
+    condition.gamma.learn.mode.ra[c] <- (condition.gamma.learn.mode.mode[c] + sqrt(condition.gamma.learn.mode.mode[c]^2 + 4*condition.gamma.learn.mode.sd[c]^2)) / (2 * condition.gamma.learn.mode.sd[c]^2)
+    condition.gamma.learn.mode.mode[c] ~ dgamma( , )
+    condition.gamma.learn.mode.sd[c] ~ dgamma( , )
     
-    condition.gamma.learn.sd.sh[c]
-    condition.gamma.learn.sd.ra[c]
+    condition.gamma.learn.sd.sh[c] <- 1 + condition.gamma.learn.sd.mode[c] * condition.gamma.learn.sd.ra[c]
+    condition.gamma.learn.sd.ra[c] <- (condition.gamma.learn.sd.mode[c] + sqrt(condition.gamma.learn.sd.mode[c]^2 + 4*condition.gamma.learn.sd.sd[c]^2)) / (2 * condition.gamma.learn.sd.sd[c]^2)
+    condition.gamma.learn.sd.mode[c] ~ dgamma( , )
+    condition.gamma.learn.sd.sd[c] ~ dgamma( , )
     
     # delta learn
     
