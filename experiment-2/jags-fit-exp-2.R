@@ -12,7 +12,7 @@ data <- data %>% filter(subject_id <= 20)
 data.for.jags <- list(
   rt = data$rt,
   subject_id = data$subject_id,
-  is.predictable = data$is_predictable,
+  is_predictable = data$is_predictable,
   pair = data$pair,
   t = data$t,
   N = length(data$rt),

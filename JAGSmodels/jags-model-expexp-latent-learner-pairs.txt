@@ -30,9 +30,7 @@ model{
     subject.adapt.beta[s] ~ dbeta(condition.adapt.beta.a[condition[s]], condition.adapt.beta.b[condition[s]])
     
     # gamma (rate of adaptation)
-    subject.adapt.gamma[s] ~ dgamma(subject.adapt.gamma.sh[s], subject.adapt.gamma.ra[s])
-    subject.adapt.gamma.sh[s] <- 1 + rate.mode[condition[s]] * subject.adapt.gamma.ra[condition[s]]
-    subject.adapt.gamma.ra[s] <- (rate.mode[condition[s]] + sqrt( rate.mode[condition[s]]^2 + 4*rate.sd[condition[s]]^2)) / (2 * rate.sd[condition[s]]^2)
+    subject.adapt.gamma[s] ~ dgamma(condition.adapt.gamma.sh[condition[s]], condition.adapt.gamma.ra[condition[s]])
     
     # learning curves ###
     # item-level #
@@ -51,7 +49,7 @@ model{
       
       # onset of learning for this pair (assuming it is learned)
       item.delta.frac[s,p] ~ dbeta(subject.delta.learn.a[s], subject.delta.learn.b[s])
-      item.delta[s,p] <- item.delta.frac[s,p] * max_t[s,p]
+      item.delta[s,p] <- item.delta.frac[s,p] * max_t[s] # should this be max_t of the pair??
     }
     
     # subject-level learning curves #
@@ -69,8 +67,8 @@ model{
     subject.beta.learn.concentration.k[s] ~ dgamma(condition.beta.learn.concentration.sh[condition[s]], condition.beta.learn.concentration.ra[condition[s]])
     
     # rate of learning for items for this subject
-    subject.gamma.learn.mode[s] ~ dgamma(condition.gamma.learn.mode.sh[s], condition.gamma.learn.mode.ra[s])
-    subject.gamma.learn.sd[s] ~ dgamma(condition.gamma.learn.sd.sh[s], condition.gamma.learn.sd.ra[s])
+    subject.gamma.learn.mode[s] ~ dgamma(condition.gamma.learn.mode.sh[condition[s]], condition.gamma.learn.mode.ra[condition[s]])
+    subject.gamma.learn.sd[s] ~ dgamma(condition.gamma.learn.sd.sh[condition[s]], condition.gamma.learn.sd.ra[condition[s]])
     subject.gamma.learn.sh[s] <- 1 + subject.gamma.learn.mode[s] * subject.gamma.learn.ra[s]
     subject.gamma.learn.ra[s] <- (subject.gamma.learn.mode[s] + sqrt( subject.gamma.learn.mode[s]^2 + 4*subject.gamma.learn.sd[s]^2)) / (2 * subject.gamma.learn.sd[s]^2)
 
@@ -104,6 +102,8 @@ model{
     
     condition.adapt.gamma.mode[c] ~ dexp(1)
     condition.adapt.gamma.sd[c] ~ dgamma(1.283196, 0.5663911) # mode = 0.5, sd = 2
+    condition.adapt.gamma.sh[c] <- 1 + condition.adapt.gamma.mode[c] * condition.adapt.gamma.ra[c]
+    condition.adapt.gamma.ra[c] <- (condition.adapt.gamma.mode[c] + sqrt( condition.adapt.gamma.mode[c]^2 + 4*condition.adapt.gamma.sd[c]^2)) / (2 * condition.adapt.gamma.sd[c]^2)
     
     # learning ####
   
