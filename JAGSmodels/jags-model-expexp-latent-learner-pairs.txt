@@ -20,18 +20,19 @@ model{
     # intercepts ####
     
     for(p in 1:P[s]){
-      alpha[s,p,1] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
-      alpha[s,p,2] ~ dnorm(alpha_mu[condition[s]], 1 / alpha_sigma[condition[s]]^2)
+      alpha[s,p,1] ~ dnorm(condition.alpha.mu[condition[s]], 1 / condition.alpha.sigma[condition[s]]^2)
+      alpha[s,p,2] ~ dnorm(condition.alpha.mu[condition[s]], 1 / condition.alpha.sigma[condition[s]]^2)
     }
   
     # adaptation curves ###
-    # same beta and gamma values for all adaptation
     
-    adapt.beta[s] ~ dbeta(beta_a[condition[s]], beta_b[condition[s]])
+    # beta (amount of adaptation)
+    subject.adapt.beta[s] ~ dbeta(condition.adapt.beta.a[condition[s]], condition.adapt.beta.b[condition[s]])
     
-    adapt.gamma[s] ~ dgamma(adapt.gamma.sh[s], adapt.gamma.ra[s])
-    adapt.gamma.sh[s] <- 1 + rate.mode[condition[s]] * adapt.gamma.ra[condition[s]]
-    adapt.gamma.ra[s] <- (rate.mode[condition[s]] + sqrt( rate.mode[condition[s]]^2 + 4*rate.sd[condition[s]]^2)) / (2 * rate.sd[condition[s]]^2)
+    # gamma (rate of adaptation)
+    subject.adapt.gamma[s] ~ dgamma(subject.adapt.gamma.sh[s], subject.adapt.gamma.ra[s])
+    subject.adapt.gamma.sh[s] <- 1 + rate.mode[condition[s]] * subject.adapt.gamma.ra[condition[s]]
+    subject.adapt.gamma.ra[s] <- (rate.mode[condition[s]] + sqrt( rate.mode[condition[s]]^2 + 4*rate.sd[condition[s]]^2)) / (2 * rate.sd[condition[s]]^2)
     
     # learning curves ###
     # item-level #
@@ -85,14 +86,30 @@ model{
   for(c in 1:C){
   
     # intercepts ####
-    alpha_mu[c] ~ dnorm(1000, 1 / 500^2)T(0,2000) # weak prior
-    alpha_sigma[c] ~ dgamma(2, .01)
+    
+    condition.alpha.mu[c] ~ dnorm(1000, 1 / 500^2)T(0,2000) # weak prior
+    condition.alpha.sigma[c] ~ dgamma(2, .01)
     
     # adaptation ####
+    
+    # beta adapt (distribution of subject beta values)
+    
+    condition.adapt.beta.a[c] <- condition.adapt.beta.mode[c] * (condition.adapt.beta.concentration[c] - 2) + 1
+    condition.adapt.beta.b[c] <- (1 - condition.adapt.beta.mode[c]) * (condition.adapt.beta.concentration[c] - 2) + 1
+    condition.adapt.beta.mode[c] ~ dbeta( , )
+    condition.adapt.beta.concentration[c] <- condition.adapt.beta.concentration.k[c] + 2
+    condition.adapt.beta.concentration.k[c] ~ dgamma( , )
+    
+    # gamma adapt (distribution of subject gamma values)
+    
+    condition.adapt.gamma.mode[c] ~ dexp(1)
+    condition.adapt.gamma.sd[c] ~ dgamma(1,1)
     
     
     # learning ####
   
+    # prob.learn (distribution of subject learning probabilities in each condition)
+    
     condition.prob.learn.a[c] <- condition.prob.learn.mode[c] * (condition.prob.learn.concentration[c] - 2) + 1
     condition.prob.learn.b[c] <- (1 - condition.prob.learn.mode[c]) * (condition.prob.learn.concentration[c] - 2) + 1
     condition.prob.learn.mode[c] ~ dbeta(1,2) # weak preference for low values
@@ -100,33 +117,12 @@ model{
     condition.prob.learn.concentration.k[c] ~ dgamma ( , ) 
   
     
+    # beta learn
     
-    rate.mode[c] ~ dexp(1)
-    rate.sd[c] ~ dgamma(1,1)
+    # gamma learn
     
-    rate.learn.mode[c] ~ dexp(1)
-    rate.learn.sd[c] ~ dgamma(1,1)
+    # delta learn
     
-    beta.mode[c] ~ dbeta(2,2) # weak preference for middle values
-    beta.concentration[c] <- beta.concentration.k[c] + 2
-    beta.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
-  
-    beta_a[c] <- beta.mode[c] * (beta.concentration[c]-2) + 1
-    beta_b[c] <- (1 - beta.mode[c]) * (beta.concentration[c]-2) + 1
-    
-    beta.learn.mode[c] ~ dbeta(2,2) # weak preference for middle values
-    beta.learn.concentration[c] <- beta.concentration.k[c] + 2
-    beta.learn.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
-  
-    beta.learn_a[c] <- beta.learn.mode[c] * (beta.learn.concentration[c]-2) + 1
-    beta.learn_b[c] <- (1 - beta.learn.mode[c]) * (beta.learn.concentration[c]-2) + 1
-    
-    delta.mode[c] ~ dbeta(1,2) # weak preference for low values
-    delta.concentration[c] <- delta.concentration.k[c] + 2
-    delta.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
-  
-    delta_a[c] <- delta.mode[c] * (delta.concentration[c]-2) + 1
-    delta_b[c] <- (1 - delta.mode[c]) * (delta.concentration[c]-2) + 1
   }
 
 }
