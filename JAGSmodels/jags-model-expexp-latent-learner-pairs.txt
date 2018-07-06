@@ -71,8 +71,8 @@ model{
     # rate of learning for items for this subject
     subject.gamma.learn.mode[s] ~ dgamma(condition.gamma.learn.mode.sh[s], condition.gamma.learn.mode.ra[s])
     subject.gamma.learn.sd[s] ~ dgamma(condition.gamma.learn.sd.sh[s], condition.gamma.learn.sd.ra[s])
-    subject.gamma.learn.sh[s] <- 1 + rate.learn.mode[condition[s]] * gamma.learn.ra[condition[s]]
-    subject.gamma.learn.ra[s] <- (rate.learn.mode[condition[s]] + sqrt( rate.learn.mode[condition[s]]^2 + 4*rate.learn.sd[condition[s]]^2)) / (2 * rate.learn.sd[condition[s]]^2)
+    subject.gamma.learn.sh[s] <- 1 + condition.gamma.learn.mode[condition[s]] * subject.gamma.learn.ra[s]
+    subject.gamma.learn.ra[s] <- (condition.gamma.learn.mode[condition[s]] + sqrt( condition.gamma.learn.mode[condition[s]]^2 + 4*condition.gamma.learn.mode.sd[condition[s]]^2)) / (2 * condition.gamma.learn.mode.sd[condition[s]]^2)
     
     # onset of learning for items for this subject
     subject.delta.learn.a[s] <- subject.delta.learn.mode[s] * (subject.delta.learn.concentration[s] - 2) +
@@ -105,7 +105,6 @@ model{
     condition.adapt.gamma.mode[c] ~ dexp(1)
     condition.adapt.gamma.sd[c] ~ dgamma(1,1)
     
-    
     # learning ####
   
     # prob.learn (distribution of subject learning probabilities in each condition)
@@ -116,12 +115,39 @@ model{
     condition.prob.learn.concentration[c] <- condition.prob.learn.concentration.k[c] + 2
     condition.prob.learn.concentration.k[c] ~ dgamma ( , ) 
   
-    
     # beta learn
+    
+    condition.beta.learn.mode.a[c] <- condition.beta.learn.mode.mode[c] * (condition.beta.learn.mode.concentration[c] - 2) + 1
+    condition.beta.learn.mode.b[c] <- (1 - condition.beta.learn.mode.mode[c]) * (condition.beta.learn.mode.concentration[c] - 2) + 1
+    condition.beta.learn.mode.mode[c] ~ dbeta(1,2) # weak preference for low values
+    condition.beta.learn.mode.concentration[c] <- condition.beta.learn.mode.concentration.k[c] + 2
+    condition.beta.learn.mode.concentration.k[c] ~ dgamma ( , ) 
+    
+    condition.beta.learn.concentration.sh[c] <- 1 + condition.beta.learn.concentration.mode[c] * condition.beta.learn.concentration.ra[s]
+    condition.beta.learn.concentration.ra[c] <- (condition.beta.learn.concentration.mode[c] + sqrt( condition.beta.learn.concentration.mode[c]^2 + 4*condition.beta.learn.concentration.sd[c]^2)) / (2 * condition.beta.learn.concentration.sd[c]^2)
+    condition.beta.learn.concentration.mode[c] ~ dgamma( , )
+    condition.beta.learn.concentration.sd[c] ~ dgamma( , )
     
     # gamma learn
     
+    condition.gamma.learn.mode.sh[c]
+    condition.gamma.learn.mode.ra[c]
+    
+    condition.gamma.learn.sd.sh[c]
+    condition.gamma.learn.sd.ra[c]
+    
     # delta learn
+    
+    condition.delta.learn.mode.a[c] <- condition.delta.learn.mode.mode[c] * (condition.delta.learn.mode.concentration[c] - 2) + 1
+    condition.delta.learn.mode.b[c] <- (1 - condition.delta.learn.mode.mode[c]) * (condition.delta.learn.mode.concentration[c] - 2) + 1
+    condition.delta.learn.mode.mode[c] ~ dbeta(1,2) # weak preference for low values
+    condition.delta.learn.mode.concentration[c] <- condition.delta.learn.mode.concentration.k[c] + 2
+    condition.delta.learn.mode.concentration.k[c] ~ dgamma ( , ) 
+    
+    condition.delta.learn.concentration.sh[c] <- 1 + condition.delta.learn.concentration.mode[c] * condition.delta.learn.concentration.ra[s]
+    condition.delta.learn.concentration.ra[c] <- (condition.delta.learn.concentration.mode[c] + sqrt( condition.delta.learn.concentration.mode[c]^2 + 4*condition.delta.learn.concentration.sd[c]^2)) / (2 * condition.delta.learn.concentration.sd[c]^2)
+    condition.delta.learn.concentration.mode[c] ~ dgamma( , )
+    condition.delta.learn.concentration.sd[c] ~ dgamma( , )
     
   }
 
