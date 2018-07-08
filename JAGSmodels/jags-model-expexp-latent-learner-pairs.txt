@@ -1,0 +1,158 @@
+model{
+
+  for(i in 1:N){
+    rt[i] ~ dnorm(mu[i], 1 / sigma[subject_id[i]] ^ 2)
+    
+    mu[i] = alpha[subject_id[i], pair[i], is_predictable[i]+1] *  (1 + subject.adapt.beta[subject_id[i]] * (exp(-subject.adapt.gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,pair[i],is_predictable[i]+1]))
+    
+    for(p in 1:P[subject_id[i]]){
+      rlr[i,p,1] = 0 
+      rlr[i,p,2] = item.learned[subject_id[i], pair[i]] * (item.beta.learn[subject_id[i],pair[i]] * (1 - exp(-item.gamma.learn[subject_id[i],pair[i]]*(t[i] - item.delta[subject_id[i],pair[i]]))))
+    }
+  }
+
+  for(s in 1:S){
+  
+    # error in RT prediction at the subject level ###
+    
+    sigma[s] ~ dgamma(2, .01)
+    
+    # intercepts ####
+    
+    for(p in 1:P[s]){
+      alpha[s,p,1] ~ dnorm(condition.alpha.mu[condition[s]], 1 / condition.alpha.sigma[condition[s]]^2)
+      alpha[s,p,2] ~ dnorm(condition.alpha.mu[condition[s]], 1 / condition.alpha.sigma[condition[s]]^2)
+    }
+  
+    # adaptation curves ###
+    
+    # beta (amount of adaptation)
+    subject.adapt.beta[s] ~ dbeta(condition.adapt.beta.a[condition[s]], condition.adapt.beta.b[condition[s]])
+    
+    # gamma (rate of adaptation)
+    subject.adapt.gamma[s] ~ dgamma(condition.adapt.gamma.sh[condition[s]], condition.adapt.gamma.ra[condition[s]])
+    
+    # learning curves ###
+    # item-level #
+    # binary learning indicator for each pair
+    # different beta, gamma, and delta values for each pair
+  
+    for(p in 1:P[s]){
+      # binary learning indicator
+      item.learned[s,p] ~ dbern(subject.prob.learn[s])
+      
+      # amount of learning for this pair (assuming it is learned)
+      item.beta.learn[s,p] ~ dbeta(subject.beta.learn.a[s], subject.beta.learn.b[s])
+      
+      # rate of learning for this pair (assuming it is learned)
+      item.gamma.learn[s,p] ~ dgamma(subject.gamma.learn.sh[s], subject.gamma.learn.ra[s])
+      
+      # onset of learning for this pair (assuming it is learned)
+      item.delta.frac[s,p] ~ dbeta(subject.delta.learn.a[s], subject.delta.learn.b[s])
+      item.delta[s,p] <- item.delta.frac[s,p] * max_t[s] # should this be max_t of the pair??
+    }
+    
+    # subject-level learning curves #
+    # hierarchical relationship, 
+    # item-level learning curves drawn from subject level distribution.
+    
+    # probability of items showing learning for this subject
+    subject.prob.learn[s] ~ dbeta(condition.prob.learn.a[condition[s]], condition.prob.learn.b[condition[s]])
+    
+    # amount of learning for items for this subject
+    subject.beta.learn.a[s] <- subject.beta.learn.mode[s] * (subject.beta.learn.concentration[s] - 2) + 1
+    subject.beta.learn.b[s] <- (1 - subject.beta.learn.mode[s]) * (subject.beta.learn.concentration[s] - 2) + 1
+    subject.beta.learn.mode[s] ~ dbeta(condition.beta.learn.mode.a[condition[s]], condition.beta.learn.mode.b[condition[s]])
+    subject.beta.learn.concentration[s] <- subject.beta.learn.concentration.k[s] + 2
+    subject.beta.learn.concentration.k[s] ~ dgamma(condition.beta.learn.concentration.sh[condition[s]], condition.beta.learn.concentration.ra[condition[s]])
+    
+    # rate of learning for items for this subject
+    subject.gamma.learn.mode[s] ~ dgamma(condition.gamma.learn.mode.sh[condition[s]], condition.gamma.learn.mode.ra[condition[s]])
+    subject.gamma.learn.sd[s] ~ dgamma(condition.gamma.learn.sd.sh[condition[s]], condition.gamma.learn.sd.ra[condition[s]])
+    subject.gamma.learn.sh[s] <- 1 + subject.gamma.learn.mode[s] * subject.gamma.learn.ra[s]
+    subject.gamma.learn.ra[s] <- (subject.gamma.learn.mode[s] + sqrt( subject.gamma.learn.mode[s]^2 + 4*subject.gamma.learn.sd[s]^2)) / (2 * subject.gamma.learn.sd[s]^2)
+
+    # onset of learning for items for this subject
+    subject.delta.learn.a[s] <- subject.delta.learn.mode[s] * (subject.delta.learn.concentration[s] - 2) + 1
+    subject.delta.learn.b[s] <- (1 - subject.delta.learn.mode[s]) * (subject.delta.learn.concentration[s] - 2) + 1
+    subject.delta.learn.mode[s] ~ dbeta(condition.delta.learn.mode.a[condition[s]], condition.delta.learn.mode.b[condition[s]])
+    subject.delta.learn.concentration[s] <- subject.delta.learn.concentration.k[s] + 2
+    subject.delta.learn.concentration.k[s] ~ dgamma(condition.delta.learn.concentration.sh[condition[s]], condition.delta.learn.concentration.ra[condition[s]])
+    
+  }
+
+  for(c in 1:C){
+  
+    # intercepts ####
+    
+    condition.alpha.mu[c] ~ dnorm(1000, 1 / 500^2)T(0,2000) # weak prior
+    condition.alpha.sigma[c] ~ dgamma(2, .01)
+    
+    # adaptation ####
+    
+    # beta adapt (distribution of subject beta values)
+    
+    condition.adapt.beta.a[c] <- condition.adapt.beta.mode[c] * (condition.adapt.beta.concentration[c] - 2) + 1
+    condition.adapt.beta.b[c] <- (1 - condition.adapt.beta.mode[c]) * (condition.adapt.beta.concentration[c] - 2) + 1
+    condition.adapt.beta.mode[c] ~ dbeta(1,2) # weak expectation for smaller values
+    condition.adapt.beta.concentration[c] <- condition.adapt.beta.concentration.k[c] + 2
+    condition.adapt.beta.concentration.k[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
+    
+    # gamma adapt (distribution of subject gamma values)
+    
+    condition.adapt.gamma.mode[c] ~ dexp(1)
+    condition.adapt.gamma.sd[c] ~ dgamma(1.283196, 0.5663911) # mode = 0.5, sd = 2
+    condition.adapt.gamma.sh[c] <- 1 + condition.adapt.gamma.mode[c] * condition.adapt.gamma.ra[c]
+    condition.adapt.gamma.ra[c] <- (condition.adapt.gamma.mode[c] + sqrt( condition.adapt.gamma.mode[c]^2 + 4*condition.adapt.gamma.sd[c]^2)) / (2 * condition.adapt.gamma.sd[c]^2)
+    
+    # learning ####
+  
+    # prob.learn (distribution of subject learning probabilities in each condition)
+    
+    condition.prob.learn.a[c] <- condition.prob.learn.mode[c] * (condition.prob.learn.concentration[c] - 2) + 1
+    condition.prob.learn.b[c] <- (1 - condition.prob.learn.mode[c]) * (condition.prob.learn.concentration[c] - 2) + 1
+    condition.prob.learn.mode[c] ~ dbeta(1,2) # weak preference for low values
+    condition.prob.learn.concentration[c] <- condition.prob.learn.concentration.k[c] + 2
+    condition.prob.learn.concentration.k[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
+  
+    # beta learn
+    
+    condition.beta.learn.mode.a[c] <- condition.beta.learn.mode.mode[c] * (condition.beta.learn.mode.concentration[c] - 2) + 1
+    condition.beta.learn.mode.b[c] <- (1 - condition.beta.learn.mode.mode[c]) * (condition.beta.learn.mode.concentration[c] - 2) + 1
+    condition.beta.learn.mode.mode[c] ~ dbeta(1,2) # weak preference for low values
+    condition.beta.learn.mode.concentration[c] <- condition.beta.learn.mode.concentration.k[c] + 2
+    condition.beta.learn.mode.concentration.k[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
+    
+    condition.beta.learn.concentration.sh[c] <- 1 + condition.beta.learn.concentration.mode[c] * condition.beta.learn.concentration.ra[c]
+    condition.beta.learn.concentration.ra[c] <- (condition.beta.learn.concentration.mode[c] + sqrt( condition.beta.learn.concentration.mode[c]^2 + 4*condition.beta.learn.concentration.sd[c]^2)) / (2 * condition.beta.learn.concentration.sd[c]^2)
+    condition.beta.learn.concentration.mode[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
+    condition.beta.learn.concentration.sd[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
+    
+    # gamma learn
+    
+    condition.gamma.learn.mode.sh[c] <- 1 + condition.gamma.learn.mode.mode[c] * condition.gamma.learn.mode.ra[c]
+    condition.gamma.learn.mode.ra[c] <- (condition.gamma.learn.mode.mode[c] + sqrt(condition.gamma.learn.mode.mode[c]^2 + 4*condition.gamma.learn.mode.sd[c]^2)) / (2 * condition.gamma.learn.mode.sd[c]^2)
+    condition.gamma.learn.mode.mode[c] ~ dgamma(1.283196, 0.5663911) # mode = 0.5, sd = 2
+    condition.gamma.learn.mode.sd[c] ~ dgamma(1.283196, 0.5663911) # mode = 0.5, sd = 2
+    
+    condition.gamma.learn.sd.sh[c] <- 1 + condition.gamma.learn.sd.mode[c] * condition.gamma.learn.sd.ra[c]
+    condition.gamma.learn.sd.ra[c] <- (condition.gamma.learn.sd.mode[c] + sqrt(condition.gamma.learn.sd.mode[c]^2 + 4*condition.gamma.learn.sd.sd[c]^2)) / (2 * condition.gamma.learn.sd.sd[c]^2)
+    condition.gamma.learn.sd.mode[c] ~ dgamma(1.283196, 0.5663911) # mode = 0.5, sd = 2
+    condition.gamma.learn.sd.sd[c] ~ dgamma(1.283196, 0.5663911) # mode = 0.5, sd = 2
+    
+    # delta learn
+    
+    condition.delta.learn.mode.a[c] <- condition.delta.learn.mode.mode[c] * (condition.delta.learn.mode.concentration[c] - 2) + 1
+    condition.delta.learn.mode.b[c] <- (1 - condition.delta.learn.mode.mode[c]) * (condition.delta.learn.mode.concentration[c] - 2) + 1
+    condition.delta.learn.mode.mode[c] ~ dbeta(1,2) # weak preference for low values
+    condition.delta.learn.mode.concentration[c] <- condition.delta.learn.mode.concentration.k[c] + 2
+    condition.delta.learn.mode.concentration.k[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
+    
+    condition.delta.learn.concentration.sh[c] <- 1 + condition.delta.learn.concentration.mode[c] * condition.delta.learn.concentration.ra[c]
+    condition.delta.learn.concentration.ra[c] <- (condition.delta.learn.concentration.mode[c] + sqrt( condition.delta.learn.concentration.mode[c]^2 + 4*condition.delta.learn.concentration.sd[c]^2)) / (2 * condition.delta.learn.concentration.sd[c]^2)
+    condition.delta.learn.concentration.mode[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
+    condition.delta.learn.concentration.sd[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
+    
+  }
+
+}
