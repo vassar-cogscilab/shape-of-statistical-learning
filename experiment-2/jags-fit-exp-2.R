@@ -23,10 +23,10 @@ data.for.jags <- list(
   P = (data %>% group_by(subject_id) %>% summarise(n.pairs = length(unique(pair))) %>% select(n.pairs) %>% as.matrix)[,1]
 )
 
-params.to.monitor <- c('sigma', 'alpha', 'subject.gamma.adapt', 'subject.beta.adapt', 'item.learned', 'item.beta.learn', 'item.gamma.learn', 'item.delta', 'subject.prob.learn')
+params.to.monitor <- c('sigma', 'alpha', 'subject.adapt.gamma', 'subject.adapt.beta', 'item.learned', 'item.beta.learn', 'item.gamma.learn', 'item.delta', 'subject.prob.learn')
 
 jags.result <- run.jags('JAGSmodels/jags-model-expexp-latent-learner-pairs.txt', monitor=params.to.monitor, data=data.for.jags, n.chains=2,
-                        burnin=1000, sample=5000, adapt=2000, thin=2)
+                        burnin=1000, sample=5000, adapt=2000, thin=2, method="parallel")
 
 result <- as.matrix(as.mcmc(jags.result))
-save(jags.result, file = 'experiment-1/data/generated/jags/example_model_output.Rdata')
+save(jags.result, file = 'experiment-2/data/generated/jags/example_model_output.Rdata')
