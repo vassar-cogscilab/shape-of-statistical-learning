@@ -18,17 +18,7 @@ test.data.exp1<- data.all.exp1 %>% filter(practice == 0) %>%
   group_by(is_predictable)%>%
   mutate(global_index = ((as.numeric(block)+1)*t)/2)
 
-
 plot_data_1 <- test.data.exp1 %>% mutate(predictable = if_else(is_predictable == 0, 'unpredictable', 'predictable'))
-
-ggplot(plot_data_1)+
-  geom_smooth(aes(x=global_index, y= rt, col= predictable))+
-  facet_grid(cond~.)+
-  scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
-  labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
-  theme_bw(base_size = 28, base_family = "Montserrat")+
-  ggtitle('Experiment 1')
-
 
 #experiment 2
 library(readr)
@@ -68,16 +58,7 @@ test.data.exp2 <- test.data.exp2 %>% left_join(subject.pairs, by=c('subject_id',
 
 
 plot_data_2 <- test.data.exp2 %>%   mutate(predictable = if_else(is_predictable == 0, 'unpredictable', 'predictable'))%>%
-  mutate(set_size = paste0(set_size,' pairs'))
-
-ggplot(plot_data_2)+
-  geom_smooth(aes(x=global_index, y= rt, col= predictable))+
-  facet_grid(set_size~.)+
-  scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
-  labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
-  theme_bw(base_size = 28, base_family = "Montserrat")+
-  ggtitle('Experiment 2')
-
+  mutate(set_size = paste0('2 x ', set_size,' grid'))
 
 #experiment 3
 
@@ -102,20 +83,63 @@ test.data.exp3 = test.data.exp3 %>%
 plot_data_3 <- test.data.exp3 %>% mutate(predictable = if_else(is_predictable == 0, 'unpredictable', 'predictable'))%>%
   mutate(set_size = paste0(2*subject_condition+2,' pairs'))
 
+
+  
+
+##figures
+
+#group level
+ggplot(plot_data_1)+
+  geom_smooth(aes(x=global_index, y= rt, col= predictable))+
+  facet_grid(cond~.)+
+  ylim(0,1000)+
+  scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
+  labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
+  theme_bw(base_size = 28, base_family = "Montserrat")+
+  ggtitle('Experiment 1')
+ggsave("group-stat-plot-exp-1.png", device="png", path="general/figures/", dpi=300, width=15, height=8, units="in")
+
+ggplot(plot_data_2)+
+  geom_smooth(aes(x=global_index, y= rt, col= predictable))+
+  facet_grid(set_size~.)+
+  ylim(0,1000)+
+  scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
+  labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
+  theme_bw(base_size = 28, base_family = "Montserrat")+
+  ggtitle('Experiment 2')
+ggsave("group-stat-plot-exp-2.png", device="png", path="general/figures/", dpi=300, width=15, height=8, units="in")
+
+
 ggplot(plot_data_3)+
   geom_smooth(aes(x=global_index, y= rt, col= predictable))+
   facet_grid(set_size~.)+
+  ylim(0,1000)+
   scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
   labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
   theme_bw(base_size = 28, base_family = "Montserrat")+
   ggtitle('Experiment 3')
-  
+ggsave("group-stat-plot-exp-3.png", device="png", path="general/figures/", dpi=300, width=15, height=8, units="in")
 
 
-###block averages?
+
+#block averages
 block_data<- plot_data %>% group_by(set_size,predictable,block, subject_id) %>% summarise(mean_rt = mean(rt)) %>% ungroup()
  ggplot(block_data)+
    geom_boxplot(aes(x=block, y = mean_rt, col= predictable))+
-   facet_grid(set_size~.)+
+   facet_grid(.~set_size)+
    ylim(0,2000)
+
+##subject level
+which_subject = 22
+subject_data<- plot_data_2 %>% filter(subject_id %in% which_subject)
+
+ggplot(subject_data)+
+  geom_point(aes(x=t,y=rt,col = predictable))+
+  #geom_smooth(aes(x=t,y=rt,col = predictable), se=F)+
+  facet_grid(~pair)+
+  ylim(0,1000)+
+  scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
+  labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
+  theme_bw(base_size = 28, base_family = "Montserrat")
+ggsave("subject-21-plot-exp-2.png", device="png", path="general/figures/", dpi=300, width=15, height=8, units="in")
 
