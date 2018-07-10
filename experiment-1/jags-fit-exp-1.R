@@ -4,22 +4,7 @@ library(tidyr)
 library(ggplot2)
 library(coda)
 
-data <- read_csv('experiment-1/data/generated/for-jags-exp-1.csv')
-
-data <- data %>% filter(subject_id <= 20)
-
-data.for.jags <- list(
-  rt = data$rt,
-  subject_id = data$subject_id,
-  is.predictable = data$is_predictable,
-  t = data$t,
-  N = length(data$rt),
-  S = length(unique(data$subject_id)),
-  C = length(unique(data$subject_condition)),
-  condition = data$subject_condition,
-  max_t = (data%>%group_by(subject_id)%>% summarise(max_t = max(t)) %>% select(max_t) %>% as.matrix)[,1],
-  n.pairs = (data %>% group_by(subject_id) %>% summarise(n.pairs = length(unique(pair))) %>% select(n.pairs) %>% as.matrix)[,1]
-)
+load('experiment-1/data/generated/jags-data-exp-1.Rdata')
 
 params.to.monitor <- c('sigma', 'alpha', 'gamma', 'beta', 'beta.learn', 'gamma.learn', 'delta', 'is.learner')
 
