@@ -38,7 +38,7 @@ sampleParams<- function(subject, sample_posterior){
   return(sample_params)
 }
 
-sampleParams(1,samplePosterior(test,27))
+test_params <-sampleParams(1,samplePosterior(test,27))
 
 ##function to generate model prediction values based on single set of sample parameters
 
@@ -50,9 +50,11 @@ exponential<-function(alpha,beta,gamma,t){
 piecewise.exponential<-function(alpha, beta, gamma, beta1, gamma1, delta,learner,t){
   rt = alpha*(1+beta*(exp(-gamma*t)-1))
   if(t>delta){
-    rt = rt*(1-(learner *beta1*(1-exp(-gamma1*(t-delta)))))
+    rlr = (learner *beta1*(1-exp(-gamma1*(t-delta))))
   }
-  return(rt)
+  else{rlr = 0}
+  
+  return(rt*(1-rlr))
 }
 
 generateModelRT<-function(params, t){
@@ -61,23 +63,68 @@ generateModelRT<-function(params, t){
   beta<-params[3]
   gamma<-params[4]
   beta.learn<-params[5]
-  gamma.learn<-params[5]
-  delta<-params[6]
-  is.learner<-params[7]
+  gamma.learn<-params[6]
+  delta<-params[7]
+  is.learner<-params[8]
   
   rtu<- mapply(exponential, t, MoreArgs = list(alpha = alpha_1, beta = beta, gamma = gamma))
   rtp<- mapply(piecewise.exponential, t, MoreArgs = list(alpha = alpha_2, beta= beta, gamma=gamma, beta1= beta.learn, gamma1= gamma.learn, delta=delta,learner=is.learner))
   
-  return(list(rtu = rtu, rtp=rtp))
+  return(data.frame(rtu = rtu, rtp=rtp, t = t))
 }
+
+generateModelRT(test_params[1,],1:72)
+
+modelPredict<-function(params, subject_data){
+  model_predict<-generateModelRT(params, subject_data$t)
+  model_predict<-inner_join(subject_data, model_predict, by = 't') %>% mutate(rt_predict = if_else(is_predictable == 0, rtu,rtp)) %>% dplyr::select(rt_predict, t, is_predictable)
+  return(model_predict)
+}
+
+##function to 
+
+generatePlotData<-function(subject_data,sample_params){
+  model_plot_list<-apply(sample_params, MARGIN = 1,function(params){return(modelPredict(params,subject_data))})
+  model_plot_data<- data.frame(rt_predict = c(), t= c(), is_predictable = c(), index = c())
+  i=0
+  for(m in model_plot_list){
+    i=i+1
+    m$index<- rep(i, dim(m)[1])
+    model_plot_data<-rbind(model_plot_data, data.frame(m))
+  }
+  return(model_plot_data) 
+}
+
+test_data<-plot_data_1 %>% filter(subject_id == 1)
+
+temp<-generatePlotData(test_data,test_params)
+
+ggplot()+
+  geom_line(data=temp %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), col = 'blue')+
+  geom_line(data=temp %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), col = 'red')
 
 ##function to plot subject data (returns grob)
 
 
 
 ##function to add model samples to plot(input grob, output grob)
-function(data,subject,mcmc_result, sample_size){
+function(data,subject,sample_posterior){
+  subject_data<- data %>% filter(subject_id == subject)
+  sample_params = sampleParams(subject,sample_posterior)
   
+function(subject_data, sample_params)
   
+  model_plot_list<-generatePlotData(subject_data,sample_params)
+  
+  model_plot_data<- data.frame(rt_predict = c(), t= c(), is_predictable = c(), index = c())
+  i=0
+  for(m in model_plot_list){
+    i=i+1
+    m$index<- rep(i, dim(m)[1])
+    
+    model_plot_data<-rbind(model_plot_data, m)
+  }
+  
+  return(model_plot_data)
   
 }
