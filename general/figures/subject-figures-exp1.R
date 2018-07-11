@@ -38,8 +38,6 @@ sampleParams<- function(subject, sample_posterior){
   return(sample_params)
 }
 
-test_params <-sampleParams(1,samplePosterior(test,27))
-
 ##function to generate model prediction values based on single set of sample parameters
 
 exponential<-function(alpha,beta,gamma,t){
@@ -77,7 +75,8 @@ generateModelRT(test_params[1,],1:72)
 
 modelPredict<-function(params, subject_data){
   model_predict<-generateModelRT(params, subject_data$t)
-  model_predict<-inner_join(subject_data, model_predict, by = 't') %>% mutate(rt_predict = if_else(is_predictable == 0, rtu,rtp)) %>% dplyr::select(rt_predict, t, is_predictable)
+  model_predict<-inner_join(model_predict, subject_data, by = 't') %>% mutate(rt_predict = if_else(is_predictable == 0, rtu,rtp)) %>% dplyr::select(rt_predict, t, is_predictable)
+
   return(model_predict)
 }
 
@@ -95,36 +94,28 @@ generatePlotData<-function(subject_data,sample_params){
   return(model_plot_data) 
 }
 
-test_data<-plot_data_1 %>% filter(subject_id == 1)
-
-temp<-generatePlotData(test_data,test_params)
-
-ggplot()+
-  geom_line(data=temp %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), col = 'blue')+
-  geom_line(data=temp %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), col = 'red')
-
-##function to plot subject data (returns grob)
-
-
-
 ##function to add model samples to plot(input grob, output grob)
-function(data,subject,sample_posterior){
-  subject_data<- data %>% filter(subject_id == subject)
-  sample_params = sampleParams(subject,sample_posterior)
+plotSubjectModel<-function(subject_data,sample_posterior){
+  subject = unique(subject_data$subject_id)
+  sample_params <- sampleParams(subject,sample_posterior)
+
   
-function(subject_data, sample_params)
+  model_plot_data<-generatePlotData(subject_data,sample_params)
   
-  model_plot_list<-generatePlotData(subject_data,sample_params)
-  
-  model_plot_data<- data.frame(rt_predict = c(), t= c(), is_predictable = c(), index = c())
-  i=0
-  for(m in model_plot_list){
-    i=i+1
-    m$index<- rep(i, dim(m)[1])
-    
-    model_plot_data<-rbind(model_plot_data, m)
-  }
-  
-  return(model_plot_data)
-  
+  p<-ggplot()+
+    geom_line(data=model_plot_data %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), col = "#377eb8")+
+    geom_line(data=model_plot_data %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), col= "#e41a1c")+
+    geom_point(data = subject_data, aes(x=t,y=rt,col=as.character(is_predictable)))+
+    ggtitle(paste0('Subject ',subject))+
+    ylim(0,1000)+
+    scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
+    labs(y="Response time (ms)", x="Time (discrete presentations of item)")+
+    theme_bw(base_size = 28, base_family = "Montserrat")
+
+  return(p)  
+
 }
+
+test_post<-samplePosterior(test,10)
+hello<-plot_data_1 %>% filter(subject_id == 201)
+plotSubjectModel(hello, test_post)
