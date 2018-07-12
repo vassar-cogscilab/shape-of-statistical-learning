@@ -1,11 +1,5 @@
 library(tidyr)
 library(dplyr)
-library(ggplot2)
-library(extrafont)
-font_import(pattern="Montserrat")
-
-loadfonts(device="win")
-
 
 #experiment 1
 data.all.exp1 <- read.csv('experiment-1/data/raw/all-data.csv')
@@ -52,7 +46,7 @@ subject.pairs <- test.data.exp2 %>% group_by(subject_id) %>%
 test.data.exp2 <- test.data.exp2 %>% left_join(subject.pairs, by=c('subject_id', 'target'))%>% 
   group_by(subject_id, target) %>% mutate(t = 1:n()) %>% ungroup() %>% select(-target) %>%
   mutate(subject_id = as.numeric(factor(subject_id)),
-  is_predictable = as.numeric(factor(sequence_type, levels=c('unpredictable', 'predictable'))) - 1) %>%
+         is_predictable = as.numeric(factor(sequence_type, levels=c('unpredictable', 'predictable'))) - 1) %>%
   filter(correct == 1) %>% mutate(subject_condition = as.numeric(factor(set_size)))%>%
   group_by(is_predictable)%>%
   mutate(global_index = ((as.numeric(block)+1)*t))
@@ -64,7 +58,6 @@ plot_data_2 <- test.data.exp2 %>%   mutate(predictable = if_else(is_predictable 
 #experiment 3
 
 data.all.exp3 <- read_csv('experiment-3/data/raw/sl_mouse_click_data.csv')
-
 
 test.data.exp3 <- data.all.exp3 %>% filter(phase=='rt-test') %>% 
   group_by(prolific_pid, pair, target_type) %>% mutate(t = 1:n()) %>% ungroup() 
@@ -83,59 +76,3 @@ test.data.exp3 = test.data.exp3 %>%
 
 plot_data_3 <- test.data.exp3 %>% mutate(predictable = if_else(is_predictable == 0, 'unpredictable', 'predictable'))%>%
   mutate(set_size = paste0(2*subject_condition+2,' pairs'))
-
-
-
-
-##figures
-
-#group level
-avg_plot_data_1 <- plot_data_1%>% ungroup()%>%
-  mutate(is_predictable = if_else(is_predictable == 1, 1, .5))%>%
-  group_by(cond,t,predictable,is_predictable)%>% summarise(mean_rt=mean(rt))
-
-ggplot(avg_plot_data_1)+
-  geom_point(aes(x=t, y= mean_rt, col= cond, alpha = is_predictable),size =2.5)+
-  #geom_smooth(data = avg_plot_data_1 %>% filter(is_predictable == 1), aes(x=t,y=mean_rt, col = cond),size = 0.1, se =F)+
-  #geom_smooth(data = avg_plot_data_1 %>% filter(is_predictable == .5), aes(x=t,y=mean_rt, col = cond), size = 0.1, se =F)+
-  #facet_grid(~predictable)+
-  guides(alpha = F)+
-  ylim(0,1000)+
-  scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8", "#38761d"))+
-  labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
-  theme_bw(base_size = 28, base_family = "Montserrat")+
-  ggtitle('Experiment 1')
-ggsave("group-stat-plot-exp-1.png", device="png", path="general/figures/", dpi=300, width=14, height=8, units="in")
-
-avg_plot_data_2 <- plot_data_2 %>% ungroup()%>%
-  mutate(is_predictable = if_else(is_predictable == 1, 1, .85))%>%
-  group_by(set_size,t,predictable, is_predictable)%>% summarise(mean_rt=mean(rt))
-
-ggplot(avg_plot_data_2)+
-  geom_point(aes(x=t, y= mean_rt, col= set_size, alpha = is_predictable), size = 2.5)+
-  #geom_smooth(aes(x=t,y=mean_rt, col = set_size), se =F)+
-  guides(alpha = F)+
-  #facet_grid(~predictable)+
-  ylim(0,1000)+
-  scale_color_manual(guide=F, values=c("#e41a1c", "#38761d","#377eb8" ))+
-  labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
-  theme_bw(base_size = 28, base_family = "Montserrat")+
-  ggtitle('Experiment 2')
-ggsave("group-stat-plot-exp-2.png", device="png", path="general/figures/", dpi=300, width=14, height=8, units="in")
-
-avg_plot_data_3 <- plot_data_3 %>% ungroup()%>%
-  mutate(is_predictable = if_else(is_predictable == 1, 1, .85))%>%
-  group_by(set_size,t,predictable, is_predictable)%>% summarise(mean_rt=mean(rt))
-
-ggplot(avg_plot_data_3)+
-  geom_point(aes(x=t, y= mean_rt, col= set_size, alpha = is_predictable), size = 2.5)+
-  #geom_smooth(aes(x=t,y=mean_rt, col = set_size), se =F)+
-  guides(alpha = F)+
-  #facet_grid(~predictable)+
-  ylim(0,1000)+
-  scale_color_manual(guide=F, values=c("#e41a1c",  "#38761d", "#377eb8"))+
-  labs(y="Response time (ms)", x="Time (discrete presentations of item)", col = "predictable")+
-  theme_bw(base_size = 28, base_family = "Montserrat")+
-  ggtitle('Experiment 3')
-ggsave("group-stat-plot-exp-3.png", device="png", path="general/figures/", dpi=300, width=14, height=8, units="in")
-

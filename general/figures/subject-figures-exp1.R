@@ -2,13 +2,19 @@ library(runjags)
 library(MCMCpack)
 library(mcmc)
 library(coda)
+library(ggplot2)
+library(extrafont)
+font_import(pattern="Montserrat")
 
-## load chains here ??? (need a neat way to do this...)
-jags.result4<-as.mcmc(jags.result)
+loadfonts(device="win")
+source('general/figures/plotData.R')
 
-model_mcmc<-combine.mcmc(list(jags.result1,jags.result2, jags.result3,jags.result4))
+## load chains
+load(file = 'general/figures/experiment-1-fit.Rdata')
+result<-as.mcmc(jags.result)
 
-test<-as.matrix(model_mcmc)
+model_mcmc<-combine.mcmc(jags.result)
+model_mcmc<-as.matrix(model_mcmc)
 ###
 
 #function to take subset of posterior
@@ -71,8 +77,6 @@ generateModelRT<-function(params, t){
   return(data.frame(rtu = rtu, rtp=rtp, t = t))
 }
 
-generateModelRT(test_params[1,],1:72)
-
 modelPredict<-function(params, subject_data){
   model_predict<-generateModelRT(params, subject_data$t)
   model_predict<-inner_join(model_predict, subject_data, by = 't') %>% mutate(rt_predict = if_else(is_predictable == 0, rtu,rtp)) %>% dplyr::select(rt_predict, t, is_predictable)
@@ -103,9 +107,9 @@ plotSubjectModel<-function(subject_data,sample_posterior){
   model_plot_data<-generatePlotData(subject_data,sample_params)
   
   p<-ggplot()+
-    geom_line(data=model_plot_data %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), col = "#377eb8")+
-    geom_line(data=model_plot_data %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), col= "#e41a1c")+
-    geom_point(data = subject_data, aes(x=t,y=rt,col=as.character(is_predictable)))+
+    geom_line(data=model_plot_data %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), alpha = .1,col = "#377eb8")+
+    geom_line(data=model_plot_data %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), alpha= .1,col= "#e41a1c")+
+    geom_point(data = subject_data, aes(x=t,y=rt,col=as.character(is_predictable)),size =2)+
     ggtitle(paste0('Subject ',subject))+
     ylim(0,1000)+
     scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
@@ -116,6 +120,7 @@ plotSubjectModel<-function(subject_data,sample_posterior){
 
 }
 
-test_post<-samplePosterior(test,10)
-hello<-plot_data_1 %>% filter(subject_id == 201)
-plotSubjectModel(hello, test_post)
+posterior<-samplePosterior(model_mcmc,100)
+subject_data<-plot_data_1 %>% filter(subject_id == 201)
+plotSubjectModel(subject_data, posterior)
+ggsave("subject-201.png", device="png", path="general/figures/", dpi=300, width=20, height=8, units="in")

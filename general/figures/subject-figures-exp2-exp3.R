@@ -111,7 +111,6 @@ plotSubjectModel<-function(subject_data,sample_posterior){
   sample_params <- sampleParams(subject,npairs,sample_posterior)
   
   model_plot_data<-generatePlotData(subject_data,sample_params)
-  #return(model_plot_data)
 
   p<-ggplot()+
     geom_line(data=model_plot_data %>% group_by(pair,index) %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), col = "#377eb8")+
