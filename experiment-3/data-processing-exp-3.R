@@ -20,11 +20,30 @@ test.data <- test.data %>% inner_join(subject.condition)
 # get model data
 
 model.data <- test.data %>%
+  mutate(rt = as.numeric(rt)) %>%
   mutate(subject_id = as.numeric(factor(prolific_pid))) %>%
-  mutate(pair_id = pair) %>%
+  mutate(pair_id = as.numeric(pair)+1) %>%
   mutate(is_predictable = as.numeric(factor(target_type, levels=c('unpredictable', 'predictable'))) - 1) %>%
   select(subject_id, subject_condition, t, rt, pair_id, target_id, is_predictable)
 
 # output data
 
-write_csv(model.data, path='experiment-3/data/generated/for-jags-exp-3.csv')
+write_csv(model.data, path='experiment-3/data/generated/simplified-exp-3.csv')
+
+# generate list for jags
+
+data.for.jags <- list(
+  rt = model.data$rt,
+  subject_id = model.data$subject_id,
+  is_predictable = model.data$is_predictable,
+  pair = as.numeric(model.data$pair_id),
+  t = model.data$t,
+  N = length(model.data$rt),
+  S = length(unique(model.data$subject_id)),
+  C = length(unique(model.data$subject_condition)),
+  condition = model.data$subject_condition,
+  max_t = (model.data%>%group_by(subject_id)%>% summarise(max_t = max(t)) %>% select(max_t) %>% as.matrix)[,1],
+  P = (model.data %>% group_by(subject_id) %>% summarise(n.pairs = length(unique(pair_id))) %>% select(n.pairs) %>% as.matrix)[,1]
+)
+
+save(data.for.jags, file="experiment-3/data/generated/jags-data-exp-3.Rdata")

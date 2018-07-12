@@ -10,4 +10,4 @@
 #SBATCH --mail-type=END  	  # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=jdeleeuw@vassar.edu
 
-Rscript ~/shape-of-statistical-learning/experiment-1/junior/junior-jags-fit-exp-1.R
+Rscript ~/shape-of-statistical-learning/experiment-2/junior/junior-jags-fit-exp-2.R

@@ -38,6 +38,24 @@ test.data$subject_id <- as.numeric(factor(test.data$subject_id))
 test.data$is_predictable <- as.numeric(factor(test.data$sequence_type, levels=c('unpredictable', 'predictable'))) - 1
 test.data <- test.data %>% filter(correct == 1) %>% mutate(subject_condition = as.numeric(factor(set_size))) %>% select(-sequence_type, -block, -correct, -set_size)
 
-write_csv(test.data, path="experiment-2/data/generated/for-jags-exp-2.csv")
+write_csv(test.data, path="experiment-2/data/generated/simplified-exp-2.csv")
+
+# generate list for jags
+
+data.for.jags <- list(
+  rt = test.data$rt,
+  subject_id = test.data$subject_id,
+  is_predictable = test.data$is_predictable,
+  pair = test.data$pair,
+  t = test.data$t,
+  N = length(test.data$rt),
+  S = length(unique(test.data$subject_id)),
+  C = length(unique(test.data$subject_condition)),
+  condition = test.data$subject_condition,
+  max_t = (test.data%>%group_by(subject_id)%>% summarise(max_t = max(t)) %>% select(max_t) %>% as.matrix)[,1],
+  P = (test.data %>% group_by(subject_id) %>% summarise(n.pairs = length(unique(pair))) %>% select(n.pairs) %>% as.matrix)[,1]
+)
+
+save(data.for.jags, file="experiment-2/data/generated/jags-data-exp-2.Rdata")
 
 
