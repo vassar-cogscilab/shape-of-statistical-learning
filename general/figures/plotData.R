@@ -75,4 +75,5 @@ test.data.exp3 = test.data.exp3 %>%
   mutate(global_index = ((as.numeric(block)+1)*t))
 
 plot_data_3 <- test.data.exp3 %>% mutate(predictable = if_else(is_predictable == 0, 'unpredictable', 'predictable'))%>%
-  mutate(set_size = paste0(2*subject_condition+2,' pairs'))
+  mutate(set_size = paste0(2*subject_condition+2,' pairs'))%>%
+  mutate(pair = as.numeric(pair))

@@ -10,7 +10,7 @@ loadfonts(device="win")
 source('general/figures/plotData.R')
 
 ## load chains
-load(file = 'general/figures/experiment-1-fit.Rdata')
+load(file = 'general/figures/jags-fits/experiment-1-fit.Rdata')
 result<-as.mcmc(jags.result)
 
 model_mcmc<-combine.mcmc(jags.result)
@@ -111,7 +111,6 @@ plotSubjectModel<-function(subject_data,sample_posterior){
     geom_line(data=model_plot_data %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), alpha= .1,col= "#e41a1c")+
     geom_point(data = subject_data, aes(x=t,y=rt,col=as.character(is_predictable)),size =2)+
     ggtitle(paste0('Subject ',subject))+
-    ylim(0,1000)+
     scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
     labs(y="Response time (ms)", x="Time (discrete presentations of item)")+
     theme_bw(base_size = 28, base_family = "Montserrat")
@@ -121,6 +120,8 @@ plotSubjectModel<-function(subject_data,sample_posterior){
 }
 
 posterior<-samplePosterior(model_mcmc,100)
-subject_data<-plot_data_1 %>% filter(subject_id == 201)
+subject_data<-simplified_exp_1%>% filter(subject_id == 170)
 plotSubjectModel(subject_data, posterior)
-ggsave("subject-201.png", device="png", path="general/figures/", dpi=300, width=20, height=8, units="in")
+ggsave("subject-170.png", device="png", path="general/figures/", dpi=300, width=12, height=8, units="in")
+
+

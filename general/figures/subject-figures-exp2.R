@@ -7,20 +7,15 @@ library(extrafont)
 font_import(pattern="Montserrat")
 
 loadfonts(device="win")
-source('general/figures/plotData.R')
-
-load(file = 'general/figures/experiment-2-fit.Rdata')
+load(file = 'experiment-2/data/generated/for_jags_exp_2.Rdata')
+load(file = 'general/figures/jags-fits/experiment-2-fit.Rdata')
 result2<-as.mcmc(jags.result)
-
-load(file = 'general/figures/experiment-3-fit.Rdata')
-result3<-as.mcmc(jags.result)
 
 model_mcmc2<-combine.mcmc(result2)
   
-model_mcmc3<-combine.mcmc(result3)
 
 model_mcmc2<-as.matrix(model_mcmc2)
-model_mcmc3<-as.matrix(model_mcmc3)
+
 ###
 
 #function to take subset of posterior
@@ -125,41 +120,43 @@ plotSubjectModel<-function(subject_data,sample_posterior){
   model_plot_data<-generatePlotData(subject_data,sample_params)
 
   p<-ggplot()+
-    geom_line(data=model_plot_data %>% group_by(pair,index) %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), alpha = .1, col = "#377eb8")+
-    geom_line(data=model_plot_data %>% group_by(pair,index) %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), alpha = .1, col= "#e41a1c")+
+    geom_line(data=model_plot_data %>% group_by(pair,index) %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), alpha = .05, col = "#377eb8")+
+    geom_line(data=model_plot_data %>% group_by(pair,index) %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), alpha = .05, col= "#e41a1c")+
     geom_point(data = subject_data, aes(x=t,y=rt,col=as.character(is_predictable)),size =2)+
     facet_wrap(~pair)+
     ggtitle(paste0('Subject ',subject))+
-    ylim(0,2000)+
+    #ylim(0,1000)+
     scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
     labs(y="Response time (ms)", x="Time (discrete presentations of item)")+
     theme_bw(base_size = 28, base_family = "Montserrat")
 
   return(p)  
-  
 }
 
 posterior2<-samplePosterior(model_mcmc2,100)
-posterior3<-samplePosterior(model_mcmc3,100)
 
-subject_data2<-plot_data_2 %>% filter(subject_id == 41) 
-subject_data3<-plot_data_3 %>% filter(subject_id== 40)
+subject_data2<-for_jags_exp_2 %>% filter(subject_id == 42) 
 
 plotSubjectModel(subject_data2,posterior2)
-plotSubjectModel(subject_data3,posterior3)
+
+ggsave("subject-42.png", device="png", path="general/figures/", dpi=300, width=12, height=8, units="in")
+
 
 ###find learners
 function(model_mcmc,data){
-vars<-colnames(model_mcmc)
-subjects=unique(data$subject_id)
-for(s in subjects){
-  sub_data<- data %>% fitler(subject_id == s)
-  npairs = length(unique(sub_data$pair))
-  post = array(dim = c(length(subjects), npairs,dim(model_mcmc)[1]))
-  for(i in 1:npairs){
-    par<- paste0('item.learned[',subject,',',i,']')
-    post[,i]<- model_mcmc[,which(par == var)]
+  vars<-colnames(model_mcmc)
+  subjects=unique(data$subject_id)
+  for(s in subjects){
+    sub_data<- data %>% fitler(subject_id == s)
+    npairs = length(unique(sub_data$pair))
+    post <- array(dim = c(length(subjects), npairs,dim(model_mcmc)[1]))
+    percent <- numeric(length(subjects))
+    for(i in 1:npairs){
+      par<- paste0('item.learned[',subject,',',i,']')
+      post[,,i] = model_mcmc[,which(par == var)]
+      percent[i] = mean(post[,,i])
+    }
   }
 }
-}
+
 
