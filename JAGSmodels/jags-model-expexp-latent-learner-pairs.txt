@@ -3,11 +3,11 @@ model{
   for(i in 1:N){
     rt[i] ~ dnorm(mu[i], 1 / sigma[subject_id[i]] ^ 2)
     
-    mu[i] = alpha[subject_id[i], pair[i], is_predictable[i]+1] *  (1 + subject.adapt.beta[subject_id[i]] * (exp(-subject.adapt.gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,pair[i],is_predictable[i]+1]))
+    mu[i] = alpha[subject_id[i], pair[i], is_predictable[i]+1] *  (1 + subject.adapt.beta[subject_id[i]] * (exp(-subject.adapt.gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,pair[i], (item.learned[subject_id[i], pair[i]] * is_predictable[i])+1]))
     
     for(p in 1:P[subject_id[i]]){
       rlr[i,p,1] = 0 
-      rlr[i,p,2] = item.learned[subject_id[i], pair[i]] * (item.beta.learn[subject_id[i],pair[i]] * (1 - exp(-item.gamma.learn[subject_id[i],pair[i]]*(t[i] - item.delta[subject_id[i],pair[i]]))))
+      rlr[i,p,2] = (item.beta.learn[subject_id[i],pair[i]] * (1 - exp(-item.gamma.learn[subject_id[i],pair[i]]*(t[i] - item.delta[subject_id[i],pair[i]]))))
     }
   }
 
@@ -111,7 +111,7 @@ model{
     
     condition.prob.learn.a[c] <- condition.prob.learn.mode[c] * (condition.prob.learn.concentration[c] - 2) + 1
     condition.prob.learn.b[c] <- (1 - condition.prob.learn.mode[c]) * (condition.prob.learn.concentration[c] - 2) + 1
-    condition.prob.learn.mode[c] ~ dbeta(1,2) # weak preference for low values
+    condition.prob.learn.mode[c] ~ dbeta(1,1) # uniform prior
     condition.prob.learn.concentration[c] <- condition.prob.learn.concentration.k[c] + 2
     condition.prob.learn.concentration.k[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
   
@@ -119,7 +119,7 @@ model{
     
     condition.beta.learn.mode.a[c] <- condition.beta.learn.mode.mode[c] * (condition.beta.learn.mode.concentration[c] - 2) + 1
     condition.beta.learn.mode.b[c] <- (1 - condition.beta.learn.mode.mode[c]) * (condition.beta.learn.mode.concentration[c] - 2) + 1
-    condition.beta.learn.mode.mode[c] ~ dbeta(1,2) # weak preference for low values
+    condition.beta.learn.mode.mode[c] ~ dbeta(3,1) # slight preference for higher values, to discourage overfitting
     condition.beta.learn.mode.concentration[c] <- condition.beta.learn.mode.concentration.k[c] + 2
     condition.beta.learn.mode.concentration.k[c] ~ dgamma(1.220998,0.02209975) # mode=10, sd=50
     
