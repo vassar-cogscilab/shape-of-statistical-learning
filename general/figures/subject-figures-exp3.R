@@ -1,20 +1,17 @@
 library(runjags)
-library(MCMCpack)
+library(dplyr)
 library(mcmc)
 library(coda)
 library(ggplot2)
 library(extrafont)
 font_import(pattern="Montserrat")
-
 loadfonts(device="win")
 
-load(file = 'experiment-2/data/generated/for_jags_exp_2.Rdata')
-load(file = 'general/figures/jags-fits/6665232.Rdata')
+simplified_exp_3<- read.csv(file = 'experiment-3/data/generated/simplified-exp-3.csv')
+load(file = 'general/figures/jags-fits/exp3-result-subset.Rdata')
 result3<-as.mcmc(jags.result)
 
-model_mcmc3<-combine.mcmc(result3)
-
-model_mcmc3<-as.matrix(model_mcmc3)
+model_mcmc3<-as.matrix(result3)
 ###
 
 #function to take subset of posterior
@@ -119,19 +116,51 @@ plotSubjectModel<-function(subject_data,sample_posterior){
   subject = unique(subject_data$subject_id)
   npairs = length(unique(subject_data$pair_id))
   sample_params <- sampleParams(subject,npairs,sample_posterior)
+  condition <- unique(subject_data$subject_condition)
   
   model_plot_data<-generatePlotData(subject_data,sample_params)
-
-  p<-ggplot()+
-    geom_line(data=model_plot_data %>% group_by(pair_id,index) %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), alpha = .05, col = "#377eb8")+
-    geom_line(data=model_plot_data %>% group_by(pair_id,index) %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), alpha = .05, col= "#e41a1c")+
-    geom_point(data = subject_data, aes(x=t,y=rt,col=as.character(is_predictable)),size =2)+
-    facet_wrap(~pair_id)+
-    ggtitle(paste0('Subject ',subject))+
-    ylim(0,2000)+
-    scale_color_manual(guide=F, values=c("#e41a1c", "#377eb8"))+
-    labs(y="Response time (ms)", x="Time (discrete presentations of item)")+
-    theme_bw(base_size = 28, base_family = "Montserrat")
+  
+  if(condition == 1){
+    p<-ggplot()+
+      geom_line(data=model_plot_data %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), color ="#e41a1c", alpha = .08)+
+      geom_line(data=model_plot_data %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), color = "#e41a1c", alpha = .025)+
+      geom_point(data = subject_data %>% filter(is_predictable == 0), aes(x=t,y=rt), alpha = .2,color="#e41a1c",size =2)+
+      geom_point(data = subject_data %>% filter(is_predictable == 1), aes(x=t,y=rt), alpha = 1, color= "#e41a1c",size =2)+  
+      facet_wrap(~pair_id)+
+      ggtitle(paste0('Subject ',subject))+
+      labs(y="Response time (ms)", x="Time (discrete presentations of item)")+
+      theme_bw(base_size = 28, base_family = "Montserrat")+
+      theme(strip.background =element_rect(fill="#f3f3f3ff"))+
+      theme(strip.text = element_text(colour = '#595959'))
+    
+  }
+  if(condition == 2){
+    p<-ggplot()+
+      geom_line(data=model_plot_data %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), color ="#38761d", alpha = .08)+
+      geom_line(data=model_plot_data %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), color = "#38761d", alpha = .025)+
+      geom_point(data = subject_data %>% filter(is_predictable == 0), aes(x=t,y=rt), alpha = .2,color="#38761d",size =2)+
+      geom_point(data = subject_data %>% filter(is_predictable == 1), aes(x=t,y=rt), alpha = 1, color= "#38761d",size =2)+
+      facet_wrap(~pair_id)+
+      ggtitle(paste0('Subject ',subject))+
+      labs(y="Response time (ms)", x="Time (discrete presentations of item)")+
+      theme_bw(base_size = 28, base_family = "Montserrat")+
+      theme(strip.background =element_rect(fill="#f3f3f3ff"))+
+      theme(strip.text = element_text(colour = '#595959'))
+    
+  }
+  if(condition == 3){
+    p<-ggplot()+
+      geom_line(data=model_plot_data %>% filter(is_predictable == 1),aes(x=t,y=rt_predict,group = index), color ="#377eb8", alpha = .08)+
+      geom_line(data=model_plot_data %>% filter(is_predictable == 0),aes(x=t,y=rt_predict,group = index), color = "#377eb8", alpha = .025)+
+      geom_point(data = subject_data %>% filter(is_predictable == 0), aes(x=t,y=rt), alpha = .2,color="#377eb8",size =2)+
+      geom_point(data = subject_data %>% filter(is_predictable == 1), aes(x=t,y=rt), alpha = 1, color= "#377eb8",size =2)+
+      facet_wrap(~pair_id)+
+      ggtitle(paste0('Subject',subject))+
+      labs(y="Response time (ms)", x="Time (discrete presentations of item)")+
+      theme_bw(base_size = 28, base_family = "Montserrat")+
+      theme(strip.background =element_rect(fill="#f3f3f3ff"))+
+      theme(strip.text = element_text(colour = '#595959'))
+  }
 
   return(p)  
   
@@ -140,7 +169,7 @@ plotSubjectModel<-function(subject_data,sample_posterior){
 
 posterior3<-samplePosterior(model_mcmc3,100)
 
-subject_data3<- for_jags_exp_3 %>% mutate(pair_id = pair_id +1) %>% filter(subject_id== 88)
+subject_data3<- simplified_exp_3 %>% mutate(pair_id) %>% filter(subject_id== 88)
 
 plotSubjectModel(subject_data3,posterior3)
 
