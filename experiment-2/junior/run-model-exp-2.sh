@@ -2,7 +2,7 @@
 #SBATCH -n 64
 #SBATCH -N 1
 #SBATCH --partition=emc
-#SBATCH --job-name=jags-model
+#SBATCH --job-name=jagsexp2
 #SBATCH --output=out-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64

@@ -3,10 +3,10 @@ model{
   for(i in 1:N){
     rt[i] ~ dnorm(mu[i], 1 / sigma[subject_id[i]] ^ 2)
     
-    mu[i] = alpha[subject_id[i], is.predictable[i]+1] *  (1 + beta[subject_id[i]] * (exp(-gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,is.predictable[i]+1]))
+    mu[i] = alpha[subject_id[i], is.predictable[i]+1] *  (1 + beta[subject_id[i]] * (exp(-gamma[subject_id[i]]*t[i]) -1)) * (1 - max(0,rlr[i,(is.learner[subject_id[i]] * is.predictable[i])+1]))
     
     rlr[i,1] = 0 
-    rlr[i,2] = is.learner[subject_id[i]] * (beta.learn[subject_id[i]] * (1 - exp(-gamma.learn[subject_id[i]]*(t[i] - delta[subject_id[i]]))))
+    rlr[i,2] = beta.learn[subject_id[i]] * (1 - exp(-gamma.learn[subject_id[i]]*(t[i] - delta[subject_id[i]])))
   }
 
   for(s in 1:S){
@@ -33,7 +33,7 @@ model{
   }
 
   for(c in 1:C){
-    prob.learn[c] ~ dbeta(1,2) # weak preference for low values
+    prob.learn[c] ~ dbeta(1,1) # uniform
   
     alpha_mu[c] ~ dunif(0, 2000)
     alpha_sigma[c] ~ dgamma(2, .01)
@@ -51,14 +51,14 @@ model{
     beta_a[c] <- beta.mode[c] * (beta.concentration[c]-2) + 1
     beta_b[c] <- (1 - beta.mode[c]) * (beta.concentration[c]-2) + 1
     
-    beta.learn.mode[c] ~ dbeta(2,2) # weak preference for middle values
+    beta.learn.mode[c] ~ dbeta(3,1) # weak preference for higher values to avoid overfitting
     beta.learn.concentration[c] <- beta.concentration.k[c] + 2
     beta.learn.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
   
     beta.learn_a[c] <- beta.learn.mode[c] * (beta.learn.concentration[c]-2) + 1
     beta.learn_b[c] <- (1 - beta.learn.mode[c]) * (beta.learn.concentration[c]-2) + 1
     
-    delta.mode[c] ~ dbeta(1,2) # weak preference for low values
+    delta.mode[c] ~ dbeta(2,2) # weak preference for middle values
     delta.concentration[c] <- delta.concentration.k[c] + 2
     delta.concentration.k[c] ~ dgamma(1.283196, 0.05663911) # mode = 5, sd = 20
   
