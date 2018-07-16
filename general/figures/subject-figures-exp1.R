@@ -155,8 +155,8 @@ plotSubjectModel<-function(subject_data,sample_posterior){
 unique(simplified_exp_1%>% filter(subject_condition == 2)%>%select(subject_id))
 
 posterior<-samplePosterior(model_mcmc,100)
-subject_data<-simplified_exp_1%>% filter(subject_id == 106)
+subject_data<-simplified_exp_1%>% filter(subject_id == 201)
 plotSubjectModel(subject_data, posterior)
-ggsave("subject-170.png", device="png", path="general/figures/", dpi=300, width=12, height=8, units="in")
+ggsave("subject-201.png", device="png", path="general/figures/", dpi=300, width=12, height=8, units="in")
 
 
