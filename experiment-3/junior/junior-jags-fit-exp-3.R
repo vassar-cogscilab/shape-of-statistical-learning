@@ -5,7 +5,7 @@ library(parallel)
 
 burnin = 5000
 adapt = 5000
-sample = 100
+sample = 200
 thin = 50
 
 load('experiment-3/data/generated/jags-data-exp-3.Rdata')

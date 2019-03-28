@@ -6,7 +6,7 @@
 #SBATCH --output=out-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
-#SBATCH --time=48:00:00
+#SBATCH --time=7-00
 #SBATCH --mail-type=END  	  # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=jdeleeuw@vassar.edu
 

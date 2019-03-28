@@ -57,7 +57,4 @@ rlr.plot <- ggplot(plotting.data %>% filter(type=="relative learning rate"), aes
 
 cowplot::plot_grid(fit.plot, rlr.plot, nrow=2, align="V", rel_heights = c(1.8,1))
 
-ggsave("model-simulated-data.png", device="png", path="general/", dpi=300, width=16, height=12, units="in")
-
-
-ggsave("model-rlr.png", device="png", path="general/", dpi=300, width=15, height=4, units="in")
+ggsave("model-simulated-data.png", device="png", path="general/", dpi=300, width=16, height=14, units="in")

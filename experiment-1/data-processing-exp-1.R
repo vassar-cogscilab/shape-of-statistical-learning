@@ -40,7 +40,7 @@ data.for.jags <- list(
   N = length(data.for.model$rt),
   S = length(unique(data.for.model$subject_id)),
   C = length(unique(data.for.model$subject_condition)),
-  condition = data.for.model$subject_condition,
+  condition = (data.for.model %>% group_by(subject_id) %>% summarise(s_condition = mean(subject_condition)) %>% arrange(subject_id))$s_condition,
   max_t = (data.for.model %>% group_by(subject_id) %>% summarise(max_t = max(t)) %>% select(max_t) %>% as.matrix)[,1],
   n.pairs = (data.for.model %>% group_by(subject_id) %>% summarise(n.pairs = length(unique(pair))) %>% select(n.pairs) %>% as.matrix)[,1]
 )
