@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Vassar CogSci Lab Team" />
+
+<meta name="date" content="2020-07-03" />
+
+<title>Description of the Exponential-Logistic Model</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+
+
+
+
+<style type="text/css">body {background-color: #ffffff;max-width: 800px;margin-left: auto;margin-right: auto;margin-top: 0px;margin-bottom: 0px;padding-left: 5%;padding-right: 4%;padding-top: 10px;padding-bottom: 30px;overflow: visible;font-family: Verdana;font-size: 14px;line-height: 1.35;}#TOC {clear: both;margin: 0 0 10px 10px;padding: 4px;width: 400px;border: 1px solid #CCCCCC;border-radius: 5px;background-color: #f6f6f6;font-size: 13px;line-height: 1.3;}#TOC .toctitle {font-weight: bold;font-size: 15px;margin-left: 5px;}#TOC ul {padding-left: 40px;margin-left: -1.5em;margin-top: 5px;margin-bottom: 5px;}#TOC ul ul {margin-left: -2em;}#TOC li {line-height: 16px;}table {margin: 1em auto;border-width: 1px;border-color: #DDDDDD;border-style: outset;border-collapse: collapse;}table th {border-width: 2px;padding: 5px;border-style: inset;}table td {border-width: 1px;border-style: inset;line-height: 18px;padding: 5px 5px;}table, table th, table td {border-left-style: none;border-right-style: none;}table thead, table tr.even {background-color: #f7f7f7;}p {margin: 0.5em 0;}p.method { background-color: #fcfcfc;margin-left: 2em;margin-right: 2em;border-style: double;border-width: 4px;border-color: #b3fffa;border-radius: 5px;padding: 0.25em 0.75em 0.25em 1em;}span.math {font-size: 1em;}span.eqref{font-size: 0.75em;}blockquote {background-color: #f6f6f6;padding: 0.25em 0.75em;}hr {border-style: solid;border: none;border-top: 1px solid #777;margin: 28px 0;}hr.sec1 {margin-top: -1.5em;border-width: 2px;border-color: #aaaaaa;}dl {margin-left: 0;}dl dd {margin-bottom: 13px;margin-left: 13px;}dl dt {font-weight: bold;}ul {margin-top: 0;}ul li {list-style: circle outside;}ul ul {margin-bottom: 0;}pre, code {background-color: #f0f0f0;border-radius: 3px;color: #333;white-space: pre-wrap; }pre {border-radius: 3px;margin: 5px 0px 10px 0px;padding: 10px;}pre:not([class]) {background-color: #f7f7f7;}code {font-family: Consolas, Monaco, 'Courier New', monospace;font-size: 95%;}p > code, li > code {padding: 2px 0px;}div.indent2 {margin-left: 2%;}div.indent3 {margin-left: 3%;}div.figure {text-align: center;}img {background-color: #FFFFFF;padding: 2px;border: 1px solid #DDDDDD;border-radius: 3px;border: 1px solid #CCCCCC;margin: 0 5px;}h1 {margin-top: 0;font-size: 175%;line-height: 40px;}h2 {border-bottom: 4px solid #dbdbdb;padding-top: 10px;padding-bottom: 2px;font-size: 145%;}h3 {border-bottom: 2px solid #e8e8e8;padding-top: 10px;font-size: 120%;}h4 {border-bottom: 1px solid #f7f7f7;margin-left: 8px;font-size: 105%;}h5, h6 {border-bottom: 1px solid #ccc;font-size: 105%;}a {color: #0033dd;text-decoration: none;}a:hover {color: #6666ff; }a:visited {color: #800080; }a:visited:hover {color: #BB00BB; }a[href^="http:"] {text-decoration: underline; }a[href^="https:"] {text-decoration: underline; }code > span.kw { color: #555; font-weight: bold; } code > span.dt { color: #902000; } code > span.dv { color: #40a070; } code > span.bn { color: #d14; } code > span.fl { color: #d14; } code > span.ch { color: #d14; } code > span.st { color: #d14; } code > span.co { color: #888888; font-style: italic; } code > span.ot { color: #007020; } code > span.al { color: #ff0000; font-weight: bold; } code > span.fu { color: #900; font-weight: bold; } code > span.er { color: #a61717; background-color: #e3d2d2; } </style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Description of the Exponential-Logistic Model</h1>
+<h4 class="author">Vassar CogSci Lab Team</h4>
+<h4 class="date">July 03, 2020</h4>
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
+<div id="TOC">
+<ul>
+<li>
+<a href="#exp">The Experiment (Data Collection)</a>
+</li>
+<li>
+<a href="#model">The Model</a>
+</li>
+<li>
+<a href="#fits">Sample Fits</a>
+<ul>
+<li>
+<a href="#fits-sim">Fitting Simulated Data</a>
+</li>
+<li>
+<a href="#fits-real">Fitting Real Experimental Data</a>
+</li>
+</ul>
+</li>
+<li>
+<a href="#references">References</a>
+</li>
+</ul>
+</div>
+<p>The Vassar CogSci Lab is modelling some pretty cool stuff. <br><br></p>
+<div id="exp" class="section level1">
+<h1>The Experiment (Data Collection)</h1>
+<hr class="sec1">
+<p>This is my understanding of how the data were collected in “Experiment 1” from Josh’s thesis.</p>
+<p>Participants were presented with a sequence of letters moving across window on a computer screen and were supposed to type the letter on the computer’s keyboard. The letters appeared animated and moved across the window from right to left, and they were only visible on the screen for two seconds. The response time for each typed letter was bounded below by zero seconds because the timing only started from the moment when the letter first started appearing on the right side of the window, well before the full letter was easily visible. The response times were also bounded above by two seconds because the letters were only visible on the screen for two seconds. In these sequences of letters, there were three different types of three-letter patterns that the participant could encounter. The patterns were sorted by difficulty and classified as one of: easy, three-letter words in the English language; medium, three-letter words in the English language but spelled backwards, or hard, a random permutation of a three-letter English word but was not itself a word in the English language. There was only one intentional pattern in the sequence of letters for each participant, and this pattern would randomly appear approximately seventy times in the sequence throughout the experiment. For more details on the experiment, see <span class="citation">Leeuw (2016)</span>.</p>
+<p>Of particular interest to us are the sequences of response times for the first letter in the pattern and the third letter in the pattern. The idea is that since the first letter in the pattern is randomly placed in the sequence, the participant will exhibit a response time for the first letter that is consistent with their baseline response time for the rest of the random letters in the sequence. If the participant learns the pattern, we expect their response times for the first letter to remain consistent with their response times for the random letters in the sequence; however, we expect their response times for the subsequent letters (in particular the third letter) to decrease as they are able to anticipate this letter and begin to move their finger to the appropriate key before the letter appears on the screen. In the case that te participant does not learn the pattern among the sequence of letters, we expect their response times for every letter in the sequence to be consistent with their baseline response time for the random letters in the sequence. Our main objective with this model is to capture the <em>possible</em> decrease in response time for the third letter in the pattern, as this change indicates anticipatory behavior and recognition of the pattern.</p>
+<p>Just a quick question about experiment design (because now I’m starting to think about it)- if there were experiment that follows the same setup to this one, but after showing the pattern many times (ideally after the participant learned the pattern, wonder how we could tell if they had!) the third letter in the pattern was changed to something random? I don’t know if there’s any point in this, but if the response time for the changed letter is higher than that for the baseline random letter would that also demonstrate that the individual had learned the pattern? I’m kinda thinking in the context of a teacher assigning math problems for homework, so maybe it’s too different because the “response time” for answering a math problem is likely greater than two seconds. But if you could measure how long it takes a student to do a particular type of problem and give the student a sequence of problems that are all similar, wouldn’t we expect to see a decrease in “response time” when the student figures out how to do that type of problem? Then to test if they actually learned the best strategy for solving that type of problem (instead of recognizing the pattern of what to do), the student could then be presented with a slightly different problem that requires a different strategy (perhaps something they haven’t learned yet). If the student just recognized the pattern of the previous problems instead of actually learning the material, then I would expect their response time to be consistent with their decreased learned response times (and their answer to be incorrect). On the other hand, if the student has worked out the strategy for the previous type of problem and understands the material, then I would think that their response time should be much greater because they are trying to figure out why their previous strategy doesn’t work. Maybe this would be totally infeasible to ask kids to do a ton of math problems even though I’d probably enjoy it, and maybe it doesn’t work for a number of other reasons, but I thought I’d ask about it anyway.</p>
+</div>
+<div id="model" class="section level1">
+<h1>The Model</h1>
+<hr class="sec1">
+<p>As discussed by <span class="citation">Dablander (2019)</span>, we treat each response time from each subject to be Log-Normally distributed with parameters <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span>. The Log-Normal distribution has some useful properties for our application, but for extended information on the Log-Normal distribution see <a href="https://en.wikipedia.org/wiki/Log-normal_distribution">its Wikipedia page</a>. Primarily, the Log-Normal distribution has no support for negative response times, yet resembles something of a normal distribution; these properties are consistent with the experimental data. The mean and variance of the distribution are both slightly messy expressions involving both <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span>, but the median of the distribution is a very clean <span class="math inline">\(\exp(\mu)\)</span>. We’ll exploit this convenience and work directly with the median, and we instead use the transformed parameter <span class="math inline">\(\mu&#39; = \log(\mu)\)</span> so that <span class="math inline">\(\text{median}\big(\text{Log-Normal}(rt | \mu&#39;, \sigma)\big) = \exp(\mu&#39;) = \exp\big(\log(\mu)\big) = \mu\)</span>. We define <span class="math inline">\(\mu&#39;\)</span> as the (log of) mixture of two differentiable (and continuous) functions that can be fully parameterized by seven parameters: <span class="math inline">\(\mu&#39; = \log(f(P, V, E, A, D, L, H))\)</span>. These seven parameters are detailed in the list below, including any restrictions on their domains:</p>
+<p>With those definitions in order, the model for a single subject is shown below:</p>
+<p><span class="math display">\[\begin{equation} \label{eqn:model}
+\begin{aligned}
+rt &amp;\sim \text{Log-Normal}(\mu&#39;, \sigma),\\[2ex]
+\mu&#39; &amp;= \log\big( P \cdot \gamma_1 + (1-P) \cdot \gamma_0 \big),\\[2ex]
+\gamma_1 &amp;= \Big( V + E \cdot \exp(-A \cdot t) \Big) \cdot \bigg( 1 - \frac{D}{1+\exp(-L \cdot (t-H))} \bigg),\\
+\gamma_0 &amp;= V + E \cdot \exp(-A \cdot t),
+\end{aligned}
+\end{equation}\]</span> where <span class="math inline">\(t\)</span> is the trial iteration, <span class="math inline">\(t \in \{1, \dots, n\}\)</span>, and <span class="math inline">\(n\)</span> is the number of trials performed in the experiment. The case where the participant learns the pattern is provided by <span class="math inline">\(\gamma_1\)</span>, and <span class="math inline">\(\gamma_0\)</span> represents the participant failing to learn the pattern.</p>
+<p>Note that you can rewrite the expression for <span class="math inline">\(\mu&#39;\)</span> and simplify it slightly. However, this simplification results in <span class="math inline">\(\Big( V + E \cdot \exp(-A \cdot t) \Big) \bigg( 1 - \frac{P \cdot D}{1+\exp(-L \cdot (t-H))} \bigg)\)</span>, where the parameters <span class="math inline">\(P\)</span> and <span class="math inline">\(D\)</span> essentially merge into one parameter that combines the probability of learning and the scale of the decrease in response time. Combining these two parameters into one could be another way to model this behavior, but I think they lose their interpretability this way. I prefer to have two interpretable parameters rather than one confusing parameter, so I would suggest using the original formulation to keep <span class="math inline">\(P\)</span> and <span class="math inline">\(D\)</span> separate.</p>
+<p>Since we have some pertinant information and beliefs as to what these parameters should be, we place priors on them. For the most part these priors will be only weakly informative because we want the data to primarily drive the fitting, but there are a few exceptions. For <span class="math inline">\(P\)</span>, the probability of learning, we would ideally like this to be binary; however, Stan cannot handle discrete parameters in its models so we settle for a very, very sharp Beta prior. The hyperparameters for this prior strongly suggest that the probability of learning be as close to either <span class="math inline">\(0\)</span> or <span class="math inline">\(1\)</span> as possible.</p>
+<p>The hyperprior for <span class="math inline">\(D\)</span>, the scale of the decrease in response time, was originally going to be pushed strongly away from zero in an effort to avoid fitting non-learners with a <span class="math inline">\(P\)</span> near <span class="math inline">\(1\)</span> and a <span class="math inline">\(D\)</span> near <span class="math inline">\(0\)</span>. With the strong prior on <span class="math inline">\(P\)</span>, this turned out to be unnecessary so I left the prior on <span class="math inline">\(D\)</span> to be somewhat informative- it discourages values near <span class="math inline">\(0\)</span> or <span class="math inline">\(1\)</span> because neither is particularly likely/useful.</p>
+<p>The priors on <span class="math inline">\(E\)</span> and <span class="math inline">\(A\)</span> are nothing special because I was more focused on the classification of learners vs non-learners and the characterization of when the learning occurs. As a result, these parameters are stuck with some simple Gamma priors. The other priors and hyperpriors are mostly weakly informative Cauchy distributions; this is similar to a normal distribution but with a fatter tail so that the data drives the fitting more than the prior. The distributions of all of the priors and hyperpriors for the model parameters and hyperparameters are shown below:</p>
+<p><span class="math display">\[\begin{equation} \label{eqn:hier}
+  \begin{aligned}
+    P &amp;\sim \text{Beta}(0.05, 0.05),\\[0.25ex]
+    V &amp;\sim \text{Gamma}(v_\alpha, v_\beta),\\[0.15ex]
+    &amp;\hspace{5mm} v_\alpha \sim \text{Cauchy}(2.5, 1),\\[0.15ex]
+    &amp;\hspace{5mm} v_\beta \sim \text{Cauchy}(1.75, 1),\\[0.25ex]
+    E &amp;\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    A &amp;\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    D &amp;\sim \text{Beta}(d_\alpha, d_\beta),\\[0.15ex]
+    &amp;\hspace{5mm} d_\alpha \sim \text{Cauchy}(2.5, 1),\\[0.15ex]
+    &amp;\hspace{5mm} d_\beta \sim \text{Cauchy}(2.5, 1),\\[0.25ex]
+    L &amp;\sim \text{Gamma}(\ell_\alpha, \ell_\beta),\\[0.15ex]
+    &amp;\hspace{5mm} \ell_\alpha \sim \text{Cauchy}(4, 1),\\[0.15ex]
+    &amp;\hspace{5mm} \ell_\beta \sim \text{Cauchy}(10, 1),\\[0.25ex]
+    H &amp;\sim \text{Cauchy}(h_\text{loc}, h_\text{scale}),\\[0.15ex]
+    &amp;\hspace{5mm} h_\text{loc} \sim \text{Cauchy}(\tfrac{n}{2}, 1),\\[0.25ex]
+    &amp;\hspace{5mm} h_\text{scale} \sim \text{Cauchy}(25, 1),\\[0.15ex]
+    \sigma &amp;\sim \text{Gamma}(2, 10).\\
+  \end{aligned}
+\end{equation}\]</span></p>
+</div>
+<div id="fits" class="section level1">
+<h1>Sample Fits</h1>
+<hr class="sec1">
+<p>These are sample fits using the model. We’ll show simulated data and real data collected from the experiment</p>
+<div id="fits-sim" class="section level2">
+<h2>Fitting Simulated Data</h2>
+<p>Basically just checking to make sure that the model recovers the parameters</p>
+</div>
+<div id="fits-real" class="section level2">
+<h2>Fitting Real Experimental Data</h2>
+<p>Now using the model to fit data from the experiment.</p>
+</div>
+</div>
+</div>
+<div id="references" class="section level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references hanging-indent">
+<div id="ref-dablander2019bayesian">
+<p>Dablander, Fabian. 2019. “Bayesian Modeling Using Stan: A Case Study.” May 30, 2019. <a href="https://fabiandablander.com/r/Law-of-Practice.html">https://fabiandablander.com/r/Law-of-Practice.html</a>.</p>
+</div>
+<div id="ref-de2016dynamic">
+<p>Leeuw, Joshua R de. 2016. “Dynamic Constraints in Statistical Learning.” PhD thesis, Indiana University.</p>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
