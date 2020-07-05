@@ -13,7 +13,7 @@ rstan_options(auto_write = TRUE)
 exp_log_model_stanc <- stanc(file = "experiment-1/kendal-model/exp_logistic_model.stan",
                              model_name = "exponential_logistic_model")
 exp_log_model <- stan_model(stanc_ret = exp_log_model_stanc)
-save(exp_log_model, file = "experiment-1/kendal-model/exp_logistic_model_h.Rds",
+save(exp_log_model, file = "experiment-1/kendal-model/exp_logistic_model.Rds",
      compress = "xz", compression_level = 9)
 load("experiment-1/kendal-model/exp_logistic_model_h.Rds")
 
@@ -52,6 +52,23 @@ for (i in seq_len(K)) {
   st = st + NTI[i]
 }
 
+K <- 1
+N <- 100
+NTI <- N
+NK <- N*K
+Y0 <- rep(NA, NK)
+Y1 <- rep(NA, NK)
+V <- 1.1
+E <- .25
+A <- .25
+D <- .4
+L <- .4
+H <- 45
+sig_2 <- .2
+x <- seq_len(NTI)
+Y0 <- sim_exp_log(x, V = V, E = E, A = A, D = 0, L = L, H = H, var = sig_2)
+Y1 <- sim_exp_log(x, V = V, E = E, A = A, D = D, L = L, H = H, var = sig_2)
+
 # Fit Simulated Data
 tic()
 sim_fit <- summary(sampling(
@@ -61,23 +78,13 @@ sim_fit <- summary(sampling(
   control = list(adapt_delta = 0.9, max_treedepth = 10)
 ))$summary
 toc()
-saveRDS(sim_fit, "Code/Experiment1/SampleFits/sim_fit_h_two.RDS")
-fit1 <- sampling(
-                 exp_log_model,
-                 data = list('K' = K, 'NTI' = as.array(NTI), 'NK' = NK, 'Y0' = Y0, 'Y1' = Y1),
-                 refresh = FALSE, chains = 2, iter = 1000, seed = 2,
-                 control = list(adapt_delta = 0.9, max_treedepth = 10)
-                )
-launch_shinystan(fit1)
-print(fit1)
-sampler_params <- get_sampler_params(fit1, inc_warmup = TRUE)
-lapply(sampler_params, summary, digits = 2)
+sim_fit
 # Plot Fits
 plot_fits_sim_gg(K, NTI, V, E, A, D, L, H, Y0, Y1, fits=sim_fit[,1], save=FALSE)
 
 
-
-
+plot(seq(0, 1, by = 0.01), dbeta(seq(0, 1, by = 0.01), .05, .05), type = "l", col = "blue")
+ lines(seq(0, 1, by = 0.01), dbeta(seq(0, 1, by = 0.01), .01, .01), type = "l", col = "red")
 ########## Test Fitting (with REAL data) #######################################
 # Visually examine data (optional)
 data <- read.csv(file = "Code/Experiment1/simplified-exp-1.csv",

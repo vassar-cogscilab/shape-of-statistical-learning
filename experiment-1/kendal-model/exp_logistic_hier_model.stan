@@ -26,8 +26,8 @@ transformed data { // manipulations of the data to use in parameter bounds
 
 parameters { // define parameters (and their bounds) used in the model
   vector<lower=0, upper=2>[K] V;  // vertical shift of all repsonse times
-  // vector<lower=0>[K] v_alpha;
-  // vector<lower=0>[K] v_beta;
+  vector<lower=0>[K] v_alpha;
+  vector<lower=0>[K] v_beta;
 
   vector<lower=0>[K] E;  // overall scale of exponential
 
@@ -36,16 +36,23 @@ parameters { // define parameters (and their bounds) used in the model
   vector<lower=0, upper=1>[K] P; // probability of learning
 
   vector<lower=0, upper=1>[K] D;  // scale of learning "drop"
+  vector<lower=0>[K] d_alpha;
+  vector<lower=0>[K] d_beta;
 
   vector<lower=0>[K] L;  // learning rate
+  vector<lower=0>[K] l_alpha;
+  vector<lower=0>[K] l_beta;
 
   vector<lower=0, upper=1>[K] H_raw;  // horizontal shift in onset of learning
+  vector<lower=0, upper=1>[K] h_loc_raw;
+  vector<lower=0>[K] h_scale;
 
   vector<lower=0>[K] sigma_2;  // main component of variance in response times
 }
 
 transformed parameters { // manipulations of the parameters (really, just their bounds)
   vector[K] H  = upperH .* H_raw;
+  vector[K] h_loc = upperH .* h_loc_raw;
 }
 
 model { // define the Bayesian hierarchical model
@@ -59,14 +66,24 @@ model { // define the Bayesian hierarchical model
   for (i in 1:K) { // iterate through each individual
     N = NTI[i];
 
+    // Distributions on the hyperparameters
+    v_alpha[i] ~ cauchy(2.5, 1);
+    v_beta[i] ~ cauchy(1.75, 1);
+    d_alpha[i] ~ cauchy(2.5, 1);
+    d_beta[i] ~ cauchy(2.5, 1);
+    l_alpha[i] ~ cauchy(4, 1);
+    l_beta[i] ~ cauchy(10, 1);
+    h_loc[i] ~ cauchy(N*1.0/2, 1);
+    h_scale[i] ~ cauchy(25, 1);
+
     // Prior distributions on parameters
-    V[i] ~ gamma(2.5, 2.5);
+    V[i] ~ gamma(v_alpha[i], v_beta[i]);
     E[i] ~ gamma(2.5, 10);
     A[i] ~ gamma(2.5, 10);
     P[i] ~ beta(0.01, 0.01);
-    D[i] ~ beta(2.5, 2.5);
-    L[i] ~ gamma(4, 10);
-    H[i] ~ cauchy(N*1.0/2, 25);
+    D[i] ~ beta(d_alpha[i], d_beta[i]);
+    L[i] ~ gamma(l_alpha[i], l_beta[i]);
+    H[i] ~ cauchy(h_loc[i], h_scale[i]);
     sigma_2[i] ~ gamma(2, 10);
 
     // Likelihood distribution for model

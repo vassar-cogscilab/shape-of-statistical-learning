@@ -30,7 +30,10 @@ MathJax.Hub.Config({
 <div id="TOC">
 <ul>
 <li><a href="#exp">The Experiment (Data Collection)</a></li>
-<li><a href="#model">The Model</a></li>
+<li><a href="#model">The Model</a>
+<ul>
+<li><a href="#model-hier">Possible Hierarchy</a></li>
+</ul></li>
 <li><a href="#fits">Sample Fits</a>
 <ul>
 <li><a href="#fits-sim">Fitting Simulated Data</a></li>
@@ -60,7 +63,7 @@ Participants were presented with a sequence of letters moving across window on a
 
 Of particular interest to us are the sequences of response times for the first letter in the pattern and the third letter in the pattern. The idea is that since the first letter in the pattern is randomly placed in the sequence, the participant will exhibit a response time for the first letter that is consistent with their baseline response time for the rest of the random letters in the sequence. If the participant learns the pattern, we expect their response times for the first letter to remain consistent with their response times for the random letters in the sequence; however, we expect their response times for the subsequent letters (in particular the third letter) to decrease as they are able to anticipate this letter and begin to move their finger to the appropriate key before the letter appears on the screen. In the case that te participant does not learn the pattern among the sequence of letters, we expect their response times for every letter in the sequence to be consistent with their baseline response time for the random letters in the sequence. Our main objective with this model is to capture the *possible* decrease in response time for the third letter in the pattern, as this change indicates anticipatory behavior and recognition of the pattern.
 
-Just a quick question about experiment design (because now I'm starting to think about it)- if there were experiment that follows the same setup to this one, but after showing the pattern many times (ideally after the participant learned the pattern, wonder how we could tell if they had!) the third letter in the pattern was changed to something random? I don't know if there's any point in this, but if the response time for the changed letter is higher than that for the baseline random letter would that also demonstrate that the individual had learned the pattern? I'm kinda thinking in the context of a teacher assigning math problems for homework, so maybe it's too different because the "response time" for answering a math problem is likely greater than two seconds. But if you could measure how long it takes a student to do a particular type of problem and give the student a sequence of problems that are all similar, wouldn't we expect to see a decrease in "response time" when the student figures out how to do that type of problem? Then to test if they actually learned the best strategy for solving that type of problem (instead of recognizing the pattern of what to do), the student could then be presented with a slightly different problem that requires a different strategy (perhaps something they haven't learned yet). If the student just recognized the pattern of the previous problems instead of actually learning the material, then I would expect their response time to be consistent with their decreased learned response times (and their answer to be incorrect). On the other hand, if the student has worked out the strategy for the previous type of problem and understands the material, then I would think that their response time should be much greater because they are trying to figure out why their previous strategy doesn't work. Maybe this would be totally infeasible to ask kids to do a ton of math problems even though I'd probably enjoy it, and maybe it doesn't work for a number of other reasons, but I thought I'd ask about it anyway.
+Just a quick question about experiment design (because now I'm starting to think about it)- if there were experiment that follows the same setup to this one, but after showing the pattern many times (ideally after the participant learned the pattern, wonder how we could tell if they had!) the third letter in the pattern was changed to something random? I don't know if there's any point in this, but if the response time for the changed letter is higher than that for the baseline random letter would that also demonstrate that the individual had learned the pattern? I'm kinda thinking in the context of a teacher assigning math problems for homework, so maybe it's too different because the "response time" for answering a math problem is likely greater than two seconds. But if you could measure how long it takes a student to do a particular type of problem and give the student a sequence of problems that are all similar, wouldn't we expect to see a decrease in "response time" when the student figures out how to do that type of problem? Then to test if they actually learned the best strategy for solving that type of problem (instead of recognizing the pattern of what to do), the student could then be presented with a slightly different problem that requires a different strategy (perhaps something they haven't learned yet). If the student just recognized the pattern of the previous problems instead of actually learning the material, then I would expect their response time to be consistent with their decreased learned response times (and their answer to be incorrect). On the other hand, if the student has worked out the strategy for the previous type of problem and understands the material, then I would think that their response time should be much greater because they are trying to figure out why their previous strategy doesn't work. Maybe this would be totally unfeasible to ask kids to do a ton of math problems even though I'd probably enjoy it, and maybe it doesn't work for a number of other reasons, but I thought I'd ask about it anyway.
 
 
 
@@ -69,57 +72,68 @@ Just a quick question about experiment design (because now I'm starting to think
 # The Model {#model}
 <hr class="sec1">
 
-As discussed by @dablander2019bayesian, we treat each response time from each subject to be Log-Normally distributed with parameters $\mu$ and $\sigma$. The Log-Normal distribution has some useful properties for our application, but for extended information on the Log-Normal distribution see [its Wikipedia page](https://en.wikipedia.org/wiki/Log-normal_distribution). Primarily, the Log-Normal distribution has no support for negative response times, yet resembles something of a normal distribution; these properties are consistent with the experimental data. The mean and variance of the distribution are both slightly messy expressions involving both $\mu$ and $\sigma$, but the median of the distribution is a very clean $\exp(\mu)$. We'll exploit this convenience and work directly with the median, and we instead use the transformed parameter $\mu' = \log(\mu)$ so that $\text{median}\big(\text{Log-Normal}(rt | \mu', \sigma)\big) = \exp(\mu') = \exp\big(\log(\mu)\big) = \mu$. We define $\mu'$ as the (log of) mixture of two differentiable (and continuous) functions that can be fully parameterized by seven parameters: $\mu' = \log(f(P, V, E, A, D, L, H))$. These seven parameters are detailed in the list below, including any restrictions on their domains:
+The starting point of this model is to define how the response times are distributed. As discussed by @dablander2019bayesian, we treat each response time from each subject to be Log-Normally distributed with parameters $\mu$ and $\sigma$; we'll write it as $rt \sim \mathcal{LN}(\mu, \sigma)$. The Log-Normal distribution has some useful properties for our application and we'll take a quick look at some of them, but for extended information on the Log-Normal distribution see [its Wikipedia page](https://en.wikipedia.org/wiki/Log-normal_distribution). Primarily, the Log-Normal distribution has no support for negative response times, yet resembles something of a normal distribution; these properties are consistent with the experimental data.
+
+The mean, mode, and variance of the distribution are all slightly messy expressions involving both $\mu$ and $\sigma$, but the median of the distribution is a very clean $\exp(\mu)$. In each of the expressions for these basic properties, the parameters $\mu$ and $\sigma^2$ appear exponentiated. To exploit this structure and make our parameterization more convenient, we instead use the transformed parameters $\hat{\mu} = \log(\mu)$ and $\hat{\sigma^2} = \log(\sigma^2)$. This transformation allows us to easily eliminate the exponentiation in the properties, and in particular it allows us to work directly with the median:
+\begin{equation} \label{eqn:log-hat}
+\begin{aligned}
+\text{med}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} \right] = \mu,\\[3ex]
+\text{mean}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} + \frac{1}{2} \hat{\sigma^2} \right] = \mu \sigma,\\
+\text{mode}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} - \hat{\sigma^2} \right] = \frac{\mu}{\sigma^2},\\
+\text{var}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \left( \exp\left[ \hat{\sigma^2} \right] - 1 \right) \exp\left[ 2 \hat{\mu} + \hat{\sigma^2} \right] = \left( \sigma^2 - 1 \right) \mu^2 \sigma^2.
+\nonumber
+\end{aligned}
+\end{equation}
+
+Since we will use the transformed parameter $\hat{\mu}$, our characterization of $\mu$ will equal the median of the distribution. We'll build the model around this fact; when we define a functional form for $\mu$, we're actually defining the behavior of the median of the response time distribution. The main goal of the model is to capture a *possible* consistent decrease in response time after a specific trial, or in other words to identify a decrease in the median response time. This is why we're going to work with $\hat{\mu}$- so that we can directly change the median of the response time distribution. A (potentially beneficial) side effect of working with $\hat{\mu}$ is that a decrease in $\hat{\mu}$ causes not only a decrease in the median response time, but it also causes a decrease in the variance of the response times (see the bottom equation in the above block). I haven't placed much emphasis on $\sigma^2$ because it mainly controls the variance of the response time distribution, so it just gets fit with the data. We define $\hat{\mu}$ as the (log of) mixture of two differentiable (and continuous) functions that can be fully parameterized by seven parameters: $\mu' = \log(f(P, V, E, A, D, L, H))$. All of these parameters and $\sigma^2$ are detailed in the list below, including any restrictions on their domains:
 
 \begin{itemize}[label=$\cdot$, itemsep=0pt]
 	\item $P \in [0, 1]$ is the probability that the individual learned the pattern during the experiment. If the fitted value of $P$ is close to $1$, that indicates the subject demonstrated recognition of the pattern; however, fitted values of $P$ close to $0$ indicates that the subject failed to recognize the existence of a pattern. Fitted values of $P$ that are neither near $0$ nor $1$ indicate confusion- either in the fitting or the participant during the experiment. Such fitted values of $P$ often occur if the participant shows some consistently low response times after a certain trial, but with sporadic response times consistent with the pre-learning baseline (we had discussed this behavior in our meeting on 29 June 2020). Typical fitted values really vary depending on how consistent the participants' response times are.
 	\item $V \in [0, 2]$ represents the median pre-learning response time in seconds; technically, it is the vertical shift of all response times. Naturally, it should not be negative because response times cannot be negative in this experiment. Furthermore, the maximum value is 2 seconds because each letter was only visible in the window for 2 seconds before the next letter appeared and the response time was cut off. Typical fitted values are around $1$ second.
-	\item $E \in [0, \infty)$ is the overall scale of the exponential used to model the period of adaptation to the task. It must be nonnegative because it must be monotonically decreasing as the subject gets used to the experiment. Typical fitted values are somewhere around $0.3$.
-	\item $A \in [0, \infty)$ is the adaptation rate to the task. It again must be nonnegative so that the exponential term decays instead of grows. Typical fitted values are somewhere around $0.3$.
+	\item $E \in [0, \infty)$ is the overall scale of the exponential used to model the period of adaptation to the task. It must be non-negative because it must be monotonically decreasing as the subject gets used to the experiment. Typical fitted values are somewhere around $0.3$.
+	\item $A \in [0, \infty)$ is the adaptation rate to the task. It again must be non-negative so that the exponential term decays instead of grows. Typical fitted values are somewhere around $0.3$.
 	\item $D \in [0, 1]$ is the scale of the learning "drop." It is the scaled difference between the mean pre-learning response time and the mean post-learning response time. A value near $0$ indicates a small decrease in response time (a post-learning response time the same as that of the pre-learning); a value near $1$ indicates a massive decrease in response time (a post-learning response time of $0$). Note that $D$ is basically meaningless if learning does not occur, that is, if $P$ is near $0$. Typically we observe fitted values around $0.4$ for a participant who demonstrated learning behavior in the experiment.
 	\item $L \in [0, \infty)$ is the learning rate of the subject. A negative learning rate would cause the logistic part of the expression to increase rather than decrease. Again, if $P$ is near $0$, $L$ has little meaning. Fitted values for this parameter vary a lot because the decrease in response times tend to happen over one trial (the response times decrease instantly as soon as the participant recognizes the pattern). Since the learning does not happen gradually, the fitted values for this parameter are likely not too useful for this experiment.
 	\item $H \in [0, n]$, is the onset of learning, where $n$ is the number of trials performed in the experiment by the individual. $H$ represents how many trials it takes for the subject to learn the pattern, and again has little meaning if $P$ is near $0$. Fitted values for $H$ really vary by individual and pattern difficulty- easier patterns are recognized earlier than more difficult patterns.
-	\item $\sigma \in [0, \infty)$ drives the variance in the response times more than $\mu'$, so we treat it as a proxy for the variance; naturally, it should be nonnegative.
+	\item $\sigma^2 \in [0, \infty)$ drives the variance in the response times more than $\mu'$, so we treat it as a proxy for the variance; naturally, it should be non-negative.
 \end{itemize}
 
-With those definitions in order, the model for a single subject is shown below:
+With those parameter definitions in order, we can write the expressions that define how the response time distribution changes as the participant progresses through the trials in the experiment. As stated above, the model will have a stagnant $\sigma^2$ and a mixture of two functions for $\mu$: one for the case where the participant *does not learn* the pattern, and one for the case where the participant *does learn* the pattern. The model for a single subject is:
 
 \begin{equation} \label{eqn:model}
 \begin{aligned}
-rt &\sim \text{Log-Normal}(\mu', \sigma),\\[2ex]
-\mu' &= \log\big( P \cdot \gamma_1 + (1-P) \cdot \gamma_0 \big),\\[2ex]
-\gamma_1 &= \Big( V + E \cdot \exp(-A \cdot t) \Big) \cdot \bigg( 1 - \frac{D}{1+\exp(-L \cdot (t-H))} \bigg),\\
-\gamma_0 &= V + E \cdot \exp(-A \cdot t),
+rt &\sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2}),\\[2ex]
+\hat{\mu} &= \log\big( P \cdot \gamma_1 + (1-P) \cdot \gamma_0 \big),\\[2ex]
+\gamma_\ell &= \Big( V + E \cdot \exp(-A \cdot t) \Big) \cdot \bigg( 1 - \frac{D}{1+\exp(-L \cdot (t-H))} \bigg),\\
+\gamma_n &= V + E \cdot \exp(-A \cdot t),
 \end{aligned}
 \end{equation}
-where $t$ is the trial iteration, $t \in \{1, \dots, n\}$, and $n$ is the number of trials performed in the experiment. The case where the participant learns the pattern is provided by $\gamma_1$, and $\gamma_0$ represents the participant failing to learn the pattern.
+where $t$ is the trial iteration, $t \in \{1, \dots, n\}$, and $n$ is the number of trials performed in the experiment by that individual. The case where the participant learns the pattern is represented by $\gamma_\ell$, and $\gamma_n$ represents the participant failing to learn the pattern. The expression for $\gamma_n$ is essentially the baseline response time for the individual when they are faced with random letters (i.e. prior to any possible learning). The expression for $\gamma_\ell$ is very similar to that of $\gamma_n$, but it includes the functional form that describes the decrease in median response time. Basically we want the model to choose between these two functional forms for $\hat{\mu}$, and it assigns a probability, $P$, to this choice.
 
-Note that you can rewrite the expression for $\mu'$ and simplify it slightly. However, this simplification results in $\Big( V + E \cdot \exp(-A \cdot t) \Big) \bigg( 1 - \frac{P \cdot D}{1+\exp(-L \cdot (t-H))} \bigg)$, where the parameters $P$ and $D$ essentially merge into one parameter that combines the probability of learning and the scale of the decrease in response time. Combining these two parameters into one could be another way to model this behavior, but I think they lose their interpretability this way. I prefer to have two interpretable parameters rather than one confusing parameter, so I would suggest using the original formulation to keep $P$ and $D$ separate.
+Note that you can rewrite the expression for $\hat{\mu}$ and simplify it slightly. However, this simplification results in $\Big( V + E \cdot \exp(-A \cdot t) \Big) \bigg( 1 - \frac{P \cdot D}{1+\exp(-L \cdot (t-H))} \bigg)$, where the parameters $P$ and $D$ essentially merge into one parameter that combines the probability of learning and the scale of the decrease in response time. Combining these two parameters into one could be another way to model this behavior, but I think they lose their interpretability this way. I prefer to have two interpretable parameters rather than one confusing parameter, so I would suggest using the original formulation to keep $P$ and $D$ separate.
 
-Since we have some pertinant information and beliefs as to what these parameters should be, we place priors on them. For the most part these priors will be only weakly informative because we want the data to primarily drive the fitting, but there are a few exceptions. For $P$, the probability of learning, we would ideally like this to be binary; however, Stan cannot handle discrete parameters in its models so we settle for a very, very sharp Beta prior. The hyperparameters for this prior strongly suggest that the probability of learning be as close to either $0$ or $1$ as possible.
+Since we have some pertinent information and beliefs as to what these parameters should be and how they should be fit, we place priors on them. For the most part these priors will be only weakly informative because we want the data to primarily drive the fitting, but there are a few exceptions. For $P$, the probability of learning, we would ideally like this to be binary; however, Stan cannot handle discrete parameters in its models so we settle for a very, very sharp Beta prior. The hyperparameters for this prior very strongly suggest that the probability of learning be as close to either $0$ or $1$ as possible.
 
-The hyperprior for $D$, the scale of the decrease in response time, was originally going to be pushed strongly away from zero in an effort to avoid fitting non-learners with a $P$ near $1$ and a $D$ near $0$. With the strong prior on $P$, this turned out to be unnecessary so I left the prior on $D$ to be somewhat informative- it discourages values near $0$ or $1$ because neither is particularly likely/useful.
+The hyperprior for $D$, the scale of the decrease in response time, was originally going to be pushed strongly away from zero in an effort to avoid fitting non-learners with a $P$ near $1$ and a $D$ near $0$. With the strong prior on $P$ this turned out to be unnecessary so I left the prior on $D$ to be somewhat informative, although it does discourage values near $0$ or $1$ because neither is particularly likely/useful.
 
-The priors on $E$ and $A$ are nothing special because I was more focused on the classification of learners vs non-learners and the characterization of when the learning occurs. As a result, these parameters are stuck with some simple Gamma priors. The other priors and hyperpriors are mostly weakly informative Cauchy distributions; this is similar to a normal distribution but with a fatter tail so that the data drives the fitting more than the prior. The distributions of all of the priors and hyperpriors for the model parameters and hyperparameters are shown below:
+You might notice that the Gamma prior on $V$ technically has support for any non-negative real number, yet the response times themselves are bounded above by 2 seconds. There aren't any useful priors that are defined on only $[0, 2]$, but we could use a prior bounded on $[0, 1]$ and scale it to support $[0, 2]$ (such as a Beta distribution). I opted for the Gamma prior so that the model would be more easily generalizable for other data, but the Stan model defines an upper bound of 2 seconds when fitting $V$.
 
-\begin{equation} \label{eqn:hier}
+The onset of learning, $H$, receives an uninformative Cauchy prior because this distribution is similar to a normal distribution but with a fatter tail. If learning occurs, it's unlikely to occur very early in the experiment so we want to discourage the model from fitting a small value of $H$. On the other hand, we don't want the model to fit a tiny decrease in the median response time for the last trial if it just happens to be slightly lower. While the Cauchy prior does technically support any real number (including negative numbers, zero, and numbers above), the Stan model bounds $H$ below by $0$ and above by the number of trials completed by the individual (so the upper bound is different for each participant). Ultimately, this Cauchy prior suggests that the learning occurs somewhere around halfway through the experiment, but it doesn't prevent the model from fitting quick or slow learners. We also might like to fit $H$ to an integer instead of a real number so we can identify the specific trial at which the individual demonstrated learning, but Stan can't do discrete parameters so we're stuck with this. However, I don't think it's so bad for the parameter estimate to say that the demonstration of learning occurred between trials because I think that the participants might have realized there was a pattern after typing it for the $H^\text{th}$ time. so that the data drives the fitting more than the prior. 
+
+The other priors are really just weakly informative distributions based on their domains. The priors on $E$ and $A$ are nothing special because I was more focused on the classification of learners vs non-learners and the characterization of when the learning occurs. As a result, these parameters are stuck with some simple Gamma priors. The Learning rate, $L$, is very difficult to fit since the decrease in response time happens within one trial, so this also just gets a simple Gamma prior.
+
+The prior distributions for the model parameters are:
+
+\begin{equation} \label{eqn:prior}
   \begin{aligned}
-    P &\sim \text{Beta}(0.05, 0.05),\\[0.25ex]
-    V &\sim \text{Gamma}(v_\alpha, v_\beta),\\[0.15ex]
-    &\hspace{5mm} v_\alpha \sim \text{Cauchy}(2.5, 1),\\[0.15ex]
-    &\hspace{5mm} v_\beta \sim \text{Cauchy}(1.75, 1),\\[0.25ex]
+    V &\sim \text{Gamma}(2.5, 2.5),\\[0.25ex]
     E &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
     A &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
-    D &\sim \text{Beta}(d_\alpha, d_\beta),\\[0.15ex]
-    &\hspace{5mm} d_\alpha \sim \text{Cauchy}(2.5, 1),\\[0.15ex]
-    &\hspace{5mm} d_\beta \sim \text{Cauchy}(2.5, 1),\\[0.25ex]
-    L &\sim \text{Gamma}(\ell_\alpha, \ell_\beta),\\[0.15ex]
-    &\hspace{5mm} \ell_\alpha \sim \text{Cauchy}(4, 1),\\[0.15ex]
-    &\hspace{5mm} \ell_\beta \sim \text{Cauchy}(10, 1),\\[0.25ex]
-    H &\sim \text{Cauchy}(h_\text{loc}, h_\text{scale}),\\[0.15ex]
-    &\hspace{5mm} h_\text{loc} \sim \text{Cauchy}(\tfrac{n}{2}, 1),\\[0.25ex]
-    &\hspace{5mm} h_\text{scale} \sim \text{Cauchy}(25, 1),\\[0.15ex]
-    \sigma &\sim \text{Gamma}(2, 10).\\
+    P &\sim \text{Beta}(0.01, 0.01),\\[0.25ex]
+    D &\sim \text{Beta}(2.5, 2.5),\\[0.25ex]
+    L &\sim \text{Gamma}(4, 10),\\[0.25ex]
+    H &\sim \text{Cauchy}(\tfrac{n}{2}, 25),\\[0.25ex]
+    \sigma &\sim \text{Gamma}(2, 10).
   \end{aligned}
 \end{equation}
 
@@ -130,14 +144,89 @@ The priors on $E$ and $A$ are nothing special because I was more focused on the 
 # Sample Fits {#fits}
 <hr class="sec1">
 
-These are sample fits using the model. We'll show simulated data and real data collected from the experiment
+These are sample fits using the model. We'll show simulated data for parameter recovery and real data collected from the experiment.
 
 
 
 
 ## Fitting Simulated Data {#fits-sim}
 
-Basically just checking to make sure that the model recovers the parameters
+Here we're basically just checking to make sure that the model recovers the parameters from the simulated data.
+
+First we read the model into R using the `stanc` function; then we compile the model using the `stan_model` function. You can use a shortcut function to accomplish all of this and more in one function call, but I prefer to do it sequentially because I find it easier to catch bugs and other errors. Disregard the warnings about $H$- it's just because of how Stan makes you define the variable upper bounds.
+
+```{r stan-model, eval=FALSE}
+library("rstan")
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+exp_log_model_stanc <- stanc(file = "../exp_logistic_model.stan",
+                             model_name = "exponential_logistic_model")
+exp_log_model <- stan_model(stanc_ret = exp_log_model_stanc)
+save(exp_log_model, file = "../exp_logistic_model.Rds",
+     compress = "xz", compression_level = 9)
+load("../exp_logistic_model.Rds")
+```
+
+We'll define the functions that we'll use to generate some simulated data.
+
+```{r exp-log-funcs, eval=FALSE}
+exp_log <- function(trial, V, E, A, D, L, H) {
+  return( (V + E*exp(-A*trial)) * (1 - D/(1 + exp(-L*(trial-H)))) )
+}
+sim_exp_log <- function(trial, V, E, A, D, L, H, var) {
+  sim <- exp_log(trial = trial, E = E, A = A, V = V, D = D, L = L, H = H) +
+         rnorm(length(trial), 0, var)
+  sim[sim < 0] <- 0
+  return(sim)
+}
+```
+
+Let's pick some parameter values and generate some simulated data. We're making three participants: the first one learns the pattern after 50 trials, the second one does not learn the pattern, and the third one shows a very small decrease in response time after 30 trials. The last participant is there just to see how the model handles a tricky situation. I have not included the observed behavior of demonstrating evidence of learning the pattern yet sporadically producing response times that are consistent with the pre-learning median.
+
+```{r exp-log-gen, eval=FALSE}
+K <- 3 # number of individuals
+N <- 100 # number of trials for each individual (same for all)
+NTI <- rep(N, K) # so Stan can handle multiple individuals
+NK <- N*K
+Y0 <- rep(NA, NK) # vector of non-learned response times
+Y1 <- rep(NA, NK) # vector of learned response times
+V <- c(1.1, 1.5, .75)
+E <- c(.25, .25, .25)
+A <- c(.25, .25, .25)
+D <- c(.4, 0, .1)
+L <- c(.4, .4, .4)
+H <- c(50, 60, 30)
+st <- 0
+for (i in seq_len(K)) {
+  x <- seq_len(NTI[i])
+  Y0[(st+1):(st+NTI[i])] <- sim_exp_log(x, V=V[i], E=E[i], A=A[i], D=0, L=L[i], H=H[i], var=0.15) # generate non-learned response times
+  Y1[(st+1):(st+NTI[i])] <- sim_exp_log(x, V=V[i], E=E[i], A=A[i], D=D[i], L=L[i], H=H[i], var=0.15) # generate learned response times
+  st = st + NTI[i]
+}
+```
+
+Now we'll actually fit our generated data with our model. This a quick and dirty fit. It's only running one chain, not a ton of iterations, and not incredibly strict parameters with regard to how closely it attempts to fit the data. It will most certainly throw a lot of warnings, but in my experience these quick fits are still quite good. I'm just going to use the summary of the fit so we can easily see how well the parameters are recovered. Note that if you want to modify the R code and only fit one individual, it's important to input `NTI` with `as.array()` because Stan can't handle vectors of length one so it's got to be an array instead. If you input more than one individual, you don't need the `as.array()`, but it doesn't hurt. Once the fit has run, we'll print some of the summary statistics of the fit so we can see the means and standard deviations of the parameter estimates.
+
+```{r fit, eval=FALSE}
+sim_fit <- summary(sampling(
+  exp_log_model,
+  data = list('K'=K, 'NTI'=as.array(NTI), 'NK'=NK, 'Y0'=Y0, 'Y1'=Y1),
+  refresh = FALSE, chains = 1, iter = 500, seed = 2,
+  control = list(adapt_delta = 0.9, max_treedepth = 10)
+))$summary
+
+sim_fit[, c(1, 3)]
+```
+
+Now we'll plot the fits over the generated data to give a visual as to how well the parameters were recovered.
+
+```{r fit-plot}
+
+```
+
+We can see that everything looks pretty good except for maybe the last person who showed just a small decrease in median response time.
+
 
 
 
