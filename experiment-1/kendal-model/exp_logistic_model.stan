@@ -26,8 +26,6 @@ transformed data { // manipulations of the data to use in parameter bounds
 
 parameters { // define parameters (and their bounds) used in the model
   vector<lower=0, upper=2>[K] V;  // vertical shift of all repsonse times
-  // vector<lower=0>[K] v_alpha;
-  // vector<lower=0>[K] v_beta;
 
   vector<lower=0>[K] E;  // overall scale of exponential
 
@@ -35,7 +33,7 @@ parameters { // define parameters (and their bounds) used in the model
 
   vector<lower=0, upper=1>[K] P; // probability of learning
 
-  vector<lower=0, upper=1>[K] D;  // scale of learning "drop"
+  vector<lower=0, upper=1>[K] D_raw;  // scale of learning "drop"
 
   vector<lower=0>[K] L;  // learning rate
 
@@ -46,6 +44,7 @@ parameters { // define parameters (and their bounds) used in the model
 
 transformed parameters { // manipulations of the parameters (really, just their bounds)
   vector[K] H  = upperH .* H_raw;
+  vector[K] D = V .* D_raw;
 }
 
 model { // define the Bayesian hierarchical model
@@ -75,7 +74,7 @@ model { // define the Bayesian hierarchical model
       // easier to interpret; thus we use mu -> log(mu) so that
       // median(lognorm(z | log(mu), sigma)) = exp(log(mu)) = mu
       mu0 = log( V[i] + E[i]*exp(-A[i]*trial) );
-      mu1 = log( V[i] + E[i]*exp(-A[i]*trial) ) + log1m(D[i]/(1 + exp(-L[i]*(trial-H[i]))) );
+      mu1 = log( V[i] + E[i]*exp(-A[i]*trial) ) + log1m(1/( (1/D[i]) + exp(-L[i]*(trial-H[i]))) );
       sig = log( sigma_2[i] );
       target += mylognormal_lpdf(Y0[st+trial] | mu0, sig);
       target += log_sum_exp(
