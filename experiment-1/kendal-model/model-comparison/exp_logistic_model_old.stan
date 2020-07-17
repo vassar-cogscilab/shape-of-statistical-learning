@@ -66,7 +66,7 @@ model { // define the Bayesian hierarchical model
 }
 
 generated quantities {
-  // real mun;
+  real mun;
   real mul;
   real sig;
   real ylpred[n];
@@ -75,9 +75,14 @@ generated quantities {
   sig = log( sigma_2 );
 
   for (trial in 1:n) {
-    mul = log(P) + log( V + E*exp(-A*trial) ) + log1m(D/( 1 + exp(-L*(trial-H))) );
+    mun = log( V + E*exp(-A*trial) );
+    mul = log( V + E*exp(-A*trial) ) + log1m(D/( 1 + exp(-L*(trial-H))) );
 
-    ylpred[trial] = lognormal_rng(mul, sig);
-    log_lik[trial] = mylognormal_lpdf(yl[trial] | mul, sig);
+    ylpred[trial] = lognormal_rng(log_sum_exp(log(P) + mul, log1m(P) + mun),
+                                  sig);
+    log_lik[trial] = log_sum_exp(
+      log(P) + mylognormal_lpdf(yl[trial] | mul, sig),
+      log1m(P) + mylognormal_lpdf(yl[trial] | mun, sig)
+    );
   }
 }

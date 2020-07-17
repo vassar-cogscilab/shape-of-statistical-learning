@@ -69,7 +69,7 @@ n <- 100
 V <- 1
 E <- .25
 A <- .25
-D <- 0
+D <- .1
 L <- .75
 H <- ceiling(n/2)
 var <- .15
@@ -96,6 +96,40 @@ plot_pred(ylpred_elo, nr_samples = 0, title = 'Posterior Predictions: Simulated 
   par(new = TRUE)
   plot_pred(ylpred_eln, nr_samples = 0, title = '', ylim = c(0, 2), lty = 'solid', shade_col = 'skyblue')
   legend('topright', legend = c('Exp Logistic Old', 'Exp Logistic New'), lty = c(2, 1), bty = 'n', cex = 1.2)
+
+
+
+library("loo")
+library("bridgesampling")
+
+
+# Bayes Factor
+bayes_factor(
+  bridge_sampler(sft_exp_log_old, silent = TRUE),
+  bridge_sampler(sft_exp_log_new, silent = TRUE)
+)
+
+loo_exp_log_old <- loo(sft_exp_log_old)
+loo_exp_log_new <- loo(sft_exp_log_new)
+loo_compare(loo_exp_log_old, loo_exp_log_new)
+
+stacking_weights <- function(fit1, fit2) {
+  log_lik_list <- list(
+    '1' = extract_log_lik(fit1),
+    '2' = extract_log_lik(fit2)
+  )
+
+  r_eff_list <- list(
+    '1' = relative_eff(extract_log_lik(fit1, merge_chains = FALSE)),
+    '2' = relative_eff(extract_log_lik(fit2, merge_chains = FALSE))
+  )
+
+  loo_model_weights(log_lik_list, method = 'stacking', r_eff_list = r_eff_list)
+}
+
+stacking_weights(sft_exp_log_old, sft_exp_log_new)
+
+
 
 
 
