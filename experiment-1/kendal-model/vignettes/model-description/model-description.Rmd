@@ -1,11 +1,11 @@
 ---
-title: "Description of the Exponential-Logistic Model"
+title: "Description of the Models We Used"
 author: "Vassar CogSci Lab Team"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
-bibliography: references.bib
+bibliography: ../references.bib
 output:
   rmarkdown::html_vignette:
-    css: stile.css
+    css: ../stile.css
     toc: false
     fig_width: 8
     fig_height: 6
@@ -32,12 +32,18 @@ MathJax.Hub.Config({
 <div id="TOC">
 <ul>
 <li><a href="#exp">The Experiment (Data Collection)</a></li>
-<li><a href="#model">The Model</a></li>
+<li><a href="#models">The Models</a>
+  <ul>
+  <li><a href="#models-no">No Learning</a></li>
+  <li><a href="#models-step">Step Learning</a></li>
+  <li><a href="#models-sym">Symmetric Logistic Learning</a></li>
+  <li><a href="#models-asym">Asymmetric Logistic Learning</a></li>
+  </ul></li>
 <li><a href="#fits">Sample Fits</a>
-<ul>
-<li><a href="#fits-sim">Fitting Simulated Data</a></li>
-<li><a href="#fits-real">Fitting Real Experimental Data</a></li>
-</ul></li>
+  <ul>
+  <li><a href="#fits-sim">Fitting Simulated Data</a></li>
+  <li><a href="#fits-real">Fitting Real Experimental Data</a></li>
+  </ul></li>
 <li><a href="#references">References</a></li>
 </ul>
 </div>
@@ -49,6 +55,18 @@ MathJax.Hub.Config({
 
 The Vassar CogSci Lab is modelling some pretty cool stuff.
 <br><br>
+
+# Some equation with a paragraph
+
+This is just a sample so I know how to do it later.
+
+\begin{equation} \label{eq:kl-Nav}
+	k_\ell^{\text{Nav}} \left( t', \epsilon \right) = \left\lceil \max \left\{ \sqrt{\frac{-2 \log(\pi t' \epsilon)}{\pi^2 t'}}, \frac{1}{\pi \sqrt{t'}} \right\} \right\rceil.
+\tag{L.1}
+\end{equation}
+
+The small-time approximations, Equations <span class="math inline eqref">\(\eqref{eq:kl-Nav}\)</span> and
+
 
 
 
@@ -68,10 +86,10 @@ Just a quick question about experiment design (because now I'm starting to think
 
 
 
-# The Model {#model}
+# The Models {#models}
 <hr class="sec1">
 
-The starting point of this model is to define how the response times are distributed. As discussed by @dablander2019bayesian, we treat each response time from each subject to be Log-Normally distributed with parameters $\mu$ and $\sigma$; we'll write it as $rt \sim \mathcal{LN}(\mu, \sigma)$. The Log-Normal distribution has some useful properties for our application and we'll take a quick look at some of them, but for extended information on the Log-Normal distribution see [its Wikipedia page](https://en.wikipedia.org/wiki/Log-normal_distribution). Primarily, the Log-Normal distribution has no support for negative response times, yet resembles something of a normal distribution; these properties are consistent with the experimental data.
+The starting point of these models is to define how the response times are distributed. As discussed by @dablander2019bayesian, we treat each response time from each subject to be Log-Normally distributed with parameters $\mu$ and $\sigma$; we'll write it as $rt \sim \mathcal{LN}(\mu, \sigma)$. The Log-Normal distribution has some useful properties for our application and we'll take a quick look at some of them, but for extended information on the Log-Normal distribution see [its Wikipedia page](https://en.wikipedia.org/wiki/Log-normal_distribution). Primarily, the Log-Normal distribution has no support for negative response times, yet it resembles something of a normal distribution; these properties are consistent with the experimental data.
 
 The mean, mode, and variance of the distribution are all slightly messy expressions involving both $\mu$ and $\sigma$, but the median of the distribution is a very clean $\exp(\mu)$. In each of the expressions for these basic properties, the parameters $\mu$ and $\sigma^2$ appear exponentiated. To exploit this structure and make our parameterization more convenient, we instead use the transformed parameters $\hat{\mu} = \log(\mu)$ and $\hat{\sigma^2} = \log(\sigma^2)$. This transformation allows us to easily eliminate the exponentiation in the properties, and in particular it allows us to work directly with the median:
 \begin{equation} \label{eqn:log-hat}
@@ -80,13 +98,45 @@ The mean, mode, and variance of the distribution are all slightly messy expressi
 \text{mean}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} + \frac{1}{2} \hat{\sigma^2} \right] = \mu \sigma,\\
 \text{mode}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} - \hat{\sigma^2} \right] = \frac{\mu}{\sigma^2},\\
 \text{var}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \left( \exp\left[ \hat{\sigma^2} \right] - 1 \right) \exp\left[ 2 \hat{\mu} + \hat{\sigma^2} \right] = \left( \sigma^2 - 1 \right) \mu^2 \sigma^2.
-\nonumber
 \end{aligned}
+\nonumber
 \end{equation}
 
-Since we will use the transformed parameter $\hat{\mu}$, our characterization of $\mu$ will equal the median of the distribution. We'll build the model around this fact; when we define a functional form for $\mu$, we're actually defining the behavior of the median of the response time distribution. The main goal of the model is to capture a *possible* consistent decrease in response time after a specific trial, or in other words to identify a decrease in the median response time. This is why we're going to work with $\hat{\mu}$- so that we can directly change the median of the response time distribution.
+Since we will use the transformed parameter $\hat{\mu}$, our characterization of $\mu$ will equal the median of the distribution. We'll build the model around this fact; when we define a functional form for $\mu$, we're actually defining the behavior of the median of the response time distribution. The main goal of the model is to capture a *possible* consistent decrease in response time after a specific trial, or in other words to identify a decrease in the median response time. This is why we're going to work with $\hat{\mu}$ &ndash; so that we can directly change the median of the response time distribution.
 
 A (potentially beneficial) side effect of working with $\hat{\mu}$ is that a decrease in $\hat{\mu}$ causes not only a decrease in the median response time, but it also causes a decrease in the variance of the response times (see the bottom equation in the above block). Josh and I had discussed this feature of the data a long time ago, but it seems to be logical that the response times are less variant once the participant learns the pattern. I haven't placed much emphasis on $\sigma^2$ because it mainly controls the variance of the response time distribution, so it just gets fit with the data.
+
+The following subsections will define functional forms for $\hat{\mu}$ that enable it to capture the evidence of learning (or lack of evidence) shown by each participant in the study. We will start with the simplest model, and gradually add more features.
+
+
+
+
+## No Learning {#models-no}
+
+This is the most basic model with just an exponential curve to fit the initial adaptation to the task. Assuming no learning occurs, this model is designed to fit the initial adaptation to the experimental task. This is the most basic model that we will test, as it defines the functional form for $\hat{\mu}$ as only a decaying exponential curve with a few parameters for fitting the data. The model for a single subject is:
+
+\begin{equation} \label{eqn:models-no}
+\begin{aligned}
+rt &\sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2}),\\[2ex]
+\hat{\mu} &= \log\big( V + E \cdot \exp(-A \cdot t) \big);\\[2ex]
+\end{aligned}
+\nonumber
+\end{equation}
+where $t$ is the trial iteration, $t \in \{1, \dots, n\}$, and $n$ is the number of trials performed in the experiment by that individual. 
+
+
+
+
+## Step Learning {#models-step}
+
+This includes a drop in the median response time to allow for the evidence of learning. This one fits this data the best because the learning is instantaneous, but it's inflexible for a more general learning process.
+
+
+
+
+## Symmetric Logistic Learning {#models-sym}
+
+This model allows the drop in the median response time to be gradual. This one can approach a step function and offers a good compromise between flexibility/generality and interpretable parameters.
 
 We define $\hat{\mu}$ as the (log of) mixture of two differentiable (and continuous) functions that can be fully parameterized by seven parameters: $\mu' = \log(f(P, V, E, A, D, L, H))$. All of these parameters and $\sigma^2$ are detailed in the list below, including any restrictions on their domains:
 
@@ -139,6 +189,13 @@ The prior distributions for the model parameters are:
     \sigma &\sim \text{Gamma}(2, 10).
   \end{aligned}
 \end{equation}
+
+
+
+
+## Asymmetric Logistic Learning {#models-asym}
+
+This model allows the drop in the median response time to be not only gradual but also asymmetric. This might be too many parameters to be useful
 
 
 

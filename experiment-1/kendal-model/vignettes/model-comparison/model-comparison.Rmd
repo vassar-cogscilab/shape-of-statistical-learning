@@ -1,0 +1,581 @@
+---
+title: "Model Comparison"
+author: "Vassar CogSci Lab Team"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+bibliography: ../references.bib
+output:
+  rmarkdown::html_vignette:
+    css: ../stile.css
+    toc: false
+    fig_width: 8
+    fig_height: 6
+vignette: >
+  %\VignetteIndexEntry{Model Comparison}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  error = TRUE,
+  comment = "#>"
+)
+```
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
+
+<div id="TOC">
+<ul>
+<li><a href="#models">Load Stan Models</a></li>
+<li><a href="#fits">Fit Models</a></li>
+<li><a href="#comp">Model Comparison</a>
+<ul>
+<li><a href="#comp-bayes">Bayes Factor</a></li>
+<li><a href="#comp-loo">Loo</a></li>
+<li><a href="#fits-real">Stacking Weights</a></li>
+</ul></li>
+<li><a href="#references">References</a></li>
+</ul>
+</div>
+
+
+
+
+
+
+The Vassar CogSci Lab is modelling some pretty cool stuff.
+<br><br>
+
+
+
+
+# The Experiment (Data Collection) {#exp}
+<hr class="sec1">
+
+This is my understanding of how the data were collected in "Experiment 1" from Josh's thesis.
+
+Participants were presented with a sequence of letters moving across window on a computer screen and were supposed to type the letter on the computer's keyboard. The letters appeared animated and moved across the window from right to left, and they were only visible on the screen for two seconds. The response time for each typed letter was bounded below by zero seconds because the timing only started from the moment when the letter first started appearing on the right side of the window, well before the full letter was easily visible. The response times were also bounded above by two seconds because the letters were only visible on the screen for two seconds. In these sequences of letters, there were three different types of three-letter patterns that the participant could encounter. The patterns were sorted by difficulty and classified as one of: easy, three-letter words in the English language; medium, three-letter words in the English language but spelled backwards, or hard, a random permutation of a three-letter English word but was not itself a word in the English language. There was only one intentional pattern in the sequence of letters for each participant, and this pattern would randomly appear approximately seventy times in the sequence throughout the experiment. For more details on the experiment, see @de2016dynamic.
+
+Of particular interest to us are the sequences of response times for the first letter in the pattern and the third letter in the pattern. The idea is that since the first letter in the pattern is randomly placed in the sequence, the participant will exhibit a response time for the first letter that is consistent with their baseline response time for the rest of the random letters in the sequence. If the participant learns the pattern, we expect their response times for the first letter to remain consistent with their response times for the random letters in the sequence; however, we expect their response times for the subsequent letters (in particular the third letter) to decrease as they are able to anticipate this letter and begin to move their finger to the appropriate key before the letter appears on the screen. In the case that te participant does not learn the pattern among the sequence of letters, we expect their response times for every letter in the sequence to be consistent with their baseline response time for the random letters in the sequence. Our main objective with this model is to capture the *possible* decrease in response time for the third letter in the pattern, as this change indicates anticipatory behavior and recognition of the pattern.
+
+Just a quick question about experiment design (because now I'm starting to think about it)- if there were experiment that follows the same setup to this one, but after showing the pattern many times (ideally after the participant learned the pattern, wonder how we could tell if they had!) the third letter in the pattern was changed to something random? I don't know if there's any point in this, but if the response time for the changed letter is higher than that for the baseline random letter would that also demonstrate that the individual had learned the pattern? I'm kinda thinking in the context of a teacher assigning math problems for homework, so maybe it's too different because the "response time" for answering a math problem is likely greater than two seconds. But if you could measure how long it takes a student to do a particular type of problem and give the student a sequence of problems that are all similar, wouldn't we expect to see a decrease in "response time" when the student figures out how to do that type of problem? Then to test if they actually learned the best strategy for solving that type of problem (instead of recognizing the pattern of what to do), the student could then be presented with a slightly different problem that requires a different strategy (perhaps something they haven't learned yet). If the student just recognized the pattern of the previous problems instead of actually learning the material, then I would expect their response time to be consistent with their decreased learned response times (and their answer to be incorrect). On the other hand, if the student has worked out the strategy for the previous type of problem and understands the material, then I would think that their response time should be much greater because they are trying to figure out why their previous strategy doesn't work. Maybe this would be totally unfeasible to ask kids to do a ton of math problems even though I'd probably enjoy it, and maybe it doesn't work for a number of other reasons, but I thought I'd ask about it anyway.
+
+
+
+
+
+# The Model {#model}
+<hr class="sec1">
+
+The starting point of this model is to define how the response times are distributed. As discussed by @dablander2019bayesian, we treat each response time from each subject to be Log-Normally distributed with parameters $\mu$ and $\sigma$; we'll write it as $rt \sim \mathcal{LN}(\mu, \sigma)$. The Log-Normal distribution has some useful properties for our application and we'll take a quick look at some of them, but for extended information on the Log-Normal distribution see [its Wikipedia page](https://en.wikipedia.org/wiki/Log-normal_distribution). Primarily, the Log-Normal distribution has no support for negative response times, yet resembles something of a normal distribution; these properties are consistent with the experimental data.
+
+The mean, mode, and variance of the distribution are all slightly messy expressions involving both $\mu$ and $\sigma$, but the median of the distribution is a very clean $\exp(\mu)$. In each of the expressions for these basic properties, the parameters $\mu$ and $\sigma^2$ appear exponentiated. To exploit this structure and make our parameterization more convenient, we instead use the transformed parameters $\hat{\mu} = \log(\mu)$ and $\hat{\sigma^2} = \log(\sigma^2)$. This transformation allows us to easily eliminate the exponentiation in the properties, and in particular it allows us to work directly with the median:
+\begin{equation} \label{eqn:log-hat}
+\begin{aligned}
+\text{med}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} \right] = \mu,\\[3ex]
+\text{mean}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} + \frac{1}{2} \hat{\sigma^2} \right] = \mu \sigma,\\
+\text{mode}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} - \hat{\sigma^2} \right] = \frac{\mu}{\sigma^2},\\
+\text{var}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \left( \exp\left[ \hat{\sigma^2} \right] - 1 \right) \exp\left[ 2 \hat{\mu} + \hat{\sigma^2} \right] = \left( \sigma^2 - 1 \right) \mu^2 \sigma^2.
+\nonumber
+\end{aligned}
+\end{equation}
+
+Since we will use the transformed parameter $\hat{\mu}$, our characterization of $\mu$ will equal the median of the distribution. We'll build the model around this fact; when we define a functional form for $\mu$, we're actually defining the behavior of the median of the response time distribution. The main goal of the model is to capture a *possible* consistent decrease in response time after a specific trial, or in other words to identify a decrease in the median response time. This is why we're going to work with $\hat{\mu}$- so that we can directly change the median of the response time distribution.
+
+A (potentially beneficial) side effect of working with $\hat{\mu}$ is that a decrease in $\hat{\mu}$ causes not only a decrease in the median response time, but it also causes a decrease in the variance of the response times (see the bottom equation in the above block). Josh and I had discussed this feature of the data a long time ago, but it seems to be logical that the response times are less variant once the participant learns the pattern. I haven't placed much emphasis on $\sigma^2$ because it mainly controls the variance of the response time distribution, so it just gets fit with the data.
+
+We define $\hat{\mu}$ as the (log of) mixture of two differentiable (and continuous) functions that can be fully parameterized by seven parameters: $\mu' = \log(f(P, V, E, A, D, L, H))$. All of these parameters and $\sigma^2$ are detailed in the list below, including any restrictions on their domains:
+
+\begin{itemize}[label=$\cdot$, itemsep=0pt]
+	\item $P \in [0, 1]$ is the probability that the individual learned the pattern during the experiment. If the fitted value of $P$ is close to $1$, that indicates the subject demonstrated recognition of the pattern; however, fitted values of $P$ close to $0$ indicates that the subject failed to recognize the existence of a pattern. Fitted values of $P$ that are neither near $0$ nor $1$ indicate confusion- either in the fitting or the participant during the experiment. Such fitted values of $P$ often occur if the participant shows some consistently low response times after a certain trial, but with sporadic response times consistent with the pre-learning baseline (we had discussed this behavior in our meeting on 29 June 2020). Typical fitted values really vary depending on how consistent the participants' response times are.
+	\item $V \in [0, 2]$ represents the median pre-learning response time in seconds; technically, it is the vertical shift of all response times. Naturally, it should not be negative because response times cannot be negative in this experiment. Furthermore, the maximum value is 2 seconds because each letter was only visible in the window for 2 seconds before the next letter appeared and the response time was cut off. Typical fitted values are around $1$ second.
+	\item $E \in [0, \infty)$ is the overall scale of the exponential used to model the period of adaptation to the task. It must be non-negative because it must be monotonically decreasing as the subject gets used to the experiment. Typical fitted values are somewhere around $0.3$.
+	\item $A \in [0, \infty)$ is the adaptation rate to the task. It again must be non-negative so that the exponential term decays instead of grows. Typical fitted values are somewhere around $0.3$.
+	\item $D \in [0, 1]$ is the scale of the learning "drop." It is the scaled difference between the mean pre-learning response time and the mean post-learning response time. A value near $0$ indicates a small decrease in response time (a post-learning response time the same as that of the pre-learning); a value near $1$ indicates a massive decrease in response time (a post-learning response time of $0$). Note that $D$ is basically meaningless if learning does not occur, that is, if $P$ is near $0$. Typically we observe fitted values around $0.4$ for a participant who demonstrated learning behavior in the experiment.
+	\item $L \in [0, \infty)$ is the learning rate of the subject. A negative learning rate would cause the logistic part of the expression to increase rather than decrease. Again, if $P$ is near $0$, $L$ has little meaning. Fitted values for this parameter vary a lot because the decrease in response times tend to happen over one trial (the response times decrease instantly as soon as the participant recognizes the pattern). Since the learning does not happen gradually, the fitted values for this parameter are likely not too useful for this experiment.
+	\item $H \in [0, n]$, is the onset of learning, where $n$ is the number of trials performed in the experiment by the individual. $H$ represents how many trials it takes for the subject to learn the pattern, and again has little meaning if $P$ is near $0$. Fitted values for $H$ really vary by individual and pattern difficulty- easier patterns are recognized earlier than more difficult patterns.
+	\item $\sigma^2 \in [0, \infty)$ drives the variance in the response times more than $\mu'$, so we treat it as a proxy for the variance; naturally, it should be non-negative.
+\end{itemize}
+
+With those parameter definitions in order, we can write the expressions that define how the response time distribution changes as the participant progresses through the trials in the experiment. As stated above, the model will have a stagnant $\sigma^2$ and a mixture of two functions for $\mu$: one for the case where the participant *does not learn* the pattern, and one for the case where the participant *does learn* the pattern. The model for a single subject is:
+
+\begin{equation} \label{eqn:model}
+\begin{aligned}
+rt &\sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2}),\\[2ex]
+\hat{\mu} &= \log\big( P \cdot \gamma_1 + (1-P) \cdot \gamma_0 \big),\\[2ex]
+\gamma_\ell &= \Big( V + E \cdot \exp(-A \cdot t) \Big) \cdot \bigg( 1 - \frac{D}{1+\exp(-L \cdot (t-H))} \bigg),\\
+\gamma_n &= V + E \cdot \exp(-A \cdot t),
+\end{aligned}
+\end{equation}
+where $t$ is the trial iteration, $t \in \{1, \dots, n\}$, and $n$ is the number of trials performed in the experiment by that individual. The case where the participant learns the pattern is represented by $\gamma_\ell$, and $\gamma_n$ represents the participant failing to learn the pattern. The expression for $\gamma_n$ is essentially the baseline response time for the individual when they are faced with random letters (i.e. prior to any possible learning). The expression for $\gamma_\ell$ is very similar to that of $\gamma_n$, but it includes the functional form that describes the decrease in median response time. Basically we want the model to choose between these two functional forms for $\hat{\mu}$, and it assigns a probability, $P$, to this choice.
+
+Note that you can rewrite the expression for $\hat{\mu}$ and simplify it slightly. However, this simplification results in $\Big( V + E \cdot \exp(-A \cdot t) \Big) \bigg( 1 - \frac{P \cdot D}{1+\exp(-L \cdot (t-H))} \bigg)$, where the parameters $P$ and $D$ essentially merge into one parameter that combines the probability of learning and the scale of the decrease in response time. Combining these two parameters into one could be another way to model this behavior, but I think they lose their interpretability this way. I prefer to have two interpretable parameters rather than one confusing parameter, so I would suggest using the original formulation to keep $P$ and $D$ separate.
+
+Since we have some pertinent information and beliefs as to what these parameters should be and how they should be fit, we place priors on them. For the most part these priors will be only weakly informative because we want the data to primarily drive the fitting, but there are a few exceptions. For $P$, the probability of learning, we would ideally like this to be binary; however, Stan cannot handle discrete parameters in its models so we settle for a very, very sharp Beta prior. The hyperparameters for this prior very strongly suggest that the probability of learning be as close to either $0$ or $1$ as possible.
+
+The hyperprior for $D$, the scale of the decrease in response time, was originally going to be pushed strongly away from zero in an effort to avoid fitting non-learners with a $P$ near $1$ and a $D$ near $0$. With the strong prior on $P$ this turned out to be unnecessary so I left the prior on $D$ to be somewhat informative, although it does discourage values near $0$ or $1$ because neither is particularly likely/useful.
+
+You might notice that the Gamma prior on $V$ technically has support for any non-negative real number, yet the response times themselves are bounded above by 2 seconds. There aren't any useful priors that are defined on only $[0, 2]$, but we could use a prior bounded on $[0, 1]$ and scale it to support $[0, 2]$ (such as a Beta distribution). I opted for the Gamma prior so that the model would be more easily generalizable for other data, but the Stan model defines an upper bound of 2 seconds when fitting $V$.
+
+The onset of learning, $H$, receives an uninformative Cauchy prior because this distribution is similar to a normal distribution but with a fatter tail. If learning occurs, it's unlikely to occur very early in the experiment so we want to discourage the model from fitting a small value of $H$. On the other hand, we don't want the model to fit a tiny decrease in the median response time for the last trial if it just happens to be slightly lower. While the Cauchy prior does technically support any real number (including negative numbers, zero, and numbers above), the Stan model bounds $H$ below by $0$ and above by the number of trials completed by the individual (so the upper bound is different for each participant). Ultimately, this Cauchy prior suggests that the learning occurs somewhere around halfway through the experiment, but it doesn't prevent the model from fitting quick or slow learners. We also might like to fit $H$ to an integer instead of a real number so we can identify the specific trial at which the individual demonstrated learning, but Stan can't do discrete parameters so we're stuck with this. However, I don't think it's so bad for the parameter estimate to say that the demonstration of learning occurred between trials because I think that the participants might have realized there was a pattern after typing it for the $H^\text{th}$ time. so that the data drives the fitting more than the prior.
+
+The other priors are really just weakly informative distributions based on their domains. The priors on $E$ and $A$ are nothing special because I was more focused on the classification of learners vs non-learners and the characterization of when the learning occurs. As a result, these parameters are stuck with some simple Gamma priors. The Learning rate, $L$, is very difficult to fit since the decrease in response time happens within one trial, so this also just gets a simple Gamma prior.
+
+The prior distributions for the model parameters are:
+
+\begin{equation} \label{eqn:prior}
+  \begin{aligned}
+    V &\sim \text{Gamma}(2.5, 2.5),\\[0.25ex]
+    E &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    A &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    P &\sim \text{Beta}(0.01, 0.01),\\[0.25ex]
+    D &\sim \text{Beta}(2.5, 2.5),\\[0.25ex]
+    L &\sim \text{Gamma}(4, 10),\\[0.25ex]
+    H &\sim \text{Cauchy}(\tfrac{n}{2}, 25),\\[0.25ex]
+    \sigma &\sim \text{Gamma}(2, 10).
+  \end{aligned}
+\end{equation}
+
+
+
+
+
+# Sample Fits {#fits}
+<hr class="sec1">
+
+These are sample fits using the model. We'll show simulated data for parameter recovery and real data collected from the experiment.
+
+
+
+
+## Fitting Simulated Data {#fits-sim}
+
+Here we're basically just checking to make sure that the model recovers the parameters from the simulated data.
+
+First we read the model into R using the `stanc` function; then we compile the model using the `stan_model` function. You can use a shortcut function to accomplish all of this and more in one function call, but I prefer to do it sequentially because I find it easier to catch bugs and other errors. Disregard the warnings about $H$- it's just because of how Stan makes you define the variable upper bounds.
+
+```{r stan-model, eval=TRUE}
+library("rstan")
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+exp_log_model_stanc <- stanc(file = "../exp_logistic_model.stan",
+                             model_name = "exponential_logistic_model")
+exp_log_model <- stan_model(stanc_ret = exp_log_model_stanc)
+```
+
+```{r stan-model-internal, eval=FALSE, include=FALSE}
+save(exp_log_model, file = "../exp_logistic_model.Rds",
+     compress = "xz", compression_level = 9)
+load("../exp_logistic_model.Rds")
+```
+
+We'll define the functions that we'll use to generate some simulated data.
+
+```{r exp-log-funcs, eval=TRUE}
+exp_log <- function(trial, V, E, A, D, L, H) {
+  return( (V + E*exp(-A*trial)) * (1 - D/(1 + exp(-L*(trial-H)))) )
+}
+sim_exp_log <- function(trial, V, E, A, D, L, H, var) {
+  sim <- exp_log(trial = trial, E = E, A = A, V = V, D = D, L = L, H = H) +
+         rnorm(length(trial), 0, var)
+  sim[sim < 0] <- 0
+  return(sim)
+}
+```
+
+Let's pick some parameter values and generate some simulated data. We're making three participants: the first one learns the pattern after 50 trials, the second one does not learn the pattern, and the third one shows a very small decrease in response time after 30 trials. The last participant is there just to see how the model handles a tricky situation. I have not included the observed behavior of demonstrating evidence of learning the pattern yet sporadically producing response times that are consistent with the pre-learning median.
+
+```{r exp-log-gen, eval=TRUE}
+K <- 3 # number of individuals
+N <- 100 # number of trials for each individual (same for all)
+NTI <- rep(N, K) # so Stan can handle multiple individuals
+NK <- N*K
+Y0 <- rep(NA, NK) # vector of non-learned response times
+Y1 <- rep(NA, NK) # vector of learned response times
+V <- c(1.1, 1.5, .75)
+E <- c(.25, .25, .25)
+A <- c(.25, .25, .25)
+P <- c(1, 0, 1)
+D <- c(.4, 0, .1)
+L <- c(.4, .4, .4)
+H <- c(50, 60, 30)
+st <- 0
+for (i in 1:K) {
+  x <- seq_len(NTI[i])
+  Y0[(st+1):(st+NTI[i])] <- sim_exp_log(x, V=V[i], E=E[i], A=A[i], D=0, L=L[i], H=H[i], var=0.15) # generate non-learned response times
+  Y1[(st+1):(st+NTI[i])] <- sim_exp_log(x, V=V[i], E=E[i], A=A[i], D=D[i], L=L[i], H=H[i], var=0.15) # generate learned response times
+  st = st + NTI[i]
+}
+```
+
+Now we'll actually fit our generated data with our model. This a quick and dirty fit. It's only running one chain, not a ton of iterations, and not incredibly strict controls with regard to how closely it attempts to fit the data. It will most certainly throw a lot of warnings, but in my experience these quick fits are still quite good and take under 30 seconds per individual. I'm just going to use the summary of the fit so we can easily see how well the parameters are recovered. Note that if you want to modify the R code and only fit one individual, it's important to input `NTI` with `as.array()` because Stan can't handle vectors of length one so it's got to be an array instead. If you input more than one individual, you don't need the `as.array()`, but it doesn't hurt. Once the fit has run, we'll print some of the summary statistics of the fit so we can see the means and standard deviations of the parameter estimates.
+
+```{r sim-fit, eval=TRUE}
+sim_fit <- summary(sampling(
+  exp_log_model,
+  data = list('K'=K, 'NTI'=as.array(NTI), 'NK'=NK, 'Y0'=Y0, 'Y1'=Y1),
+  refresh = FALSE, chains = 1, iter = 500, seed = 2,
+  control = list(adapt_delta = 0.9, max_treedepth = 10)
+))$summary
+
+sim_fit[, c(1, 3)]
+```
+
+Printing the summary tells us about the parameter estimates, but I think a visualization could be more useful. We'll plot the mean estimate for each parameter, surrounded by the 2.5\% and 97.5\% confidence intervals from the fitting. On top of that we'll plot the true value that was input to the simulation.
+
+```{r plot-sim-fit-pars, eval=TRUE}
+plot_sim_fit_pars <- function(fits, K, V, E, A, P, D, L, H) {
+  pars <- data.frame(id = seq_len(K),
+                     V = V,
+                     E = E,
+                     A = A,
+                     P = P,
+                     D = D,
+                     L = L,
+                     H = H)
+  idx <- c(1:6, 9)
+  for (i in seq_len(length(idx))) {
+    df <- as.data.frame(fits[seq_len(K) + (idx[i]-1)*K, c(1, 4, 8)])
+    colnames(df) <- c("mean", "qlow", "qupp")
+    df$id <- seq_len(K)
+    df$dumm = c(1, rep(2, K-1))
+    par_name <- substring(rownames(df)[1], 1, 1)
+
+    print(ggplot(df) +
+      geom_pointrange(alpha = 0.6, shape = 16, color = "#5fc6fa",
+                      aes(x = id, y = mean, ymin = qlow, ymax = qupp,
+                          size = factor(dumm, levels = c(1, 2)))) +
+      geom_point(data = pars, alpha = 0.8, color = "#04547c",
+                 shape = 4, size = 6, stroke = 2,
+                 aes_string(x = "id", y = par_name)) +
+      scale_size_manual(values = c(1.51, 1.5),
+                        labels = c("True Value", "Est. Mean"),
+                        name = NULL) +
+      guides(size = guide_legend(override.aes = list(size = c(1.5, 1.5),
+                                                     stroke = c(2, 1),
+                                                     shape = c(4, 16),
+                                                     lty = c(0, 0),
+                                                     color = c("#04547c",
+                                                               "#5fc6fa")))) +
+
+      scale_x_discrete(limits = as.character(seq_len(K))) +
+      labs(title = paste0("Simulated Parameter Estimates for ", par_name),
+           x = "ID of Individual", y = "Estimated Parameter Value",
+           subtitle = "Bars represent the 2.5% and 97.5% CI") +
+      theme_bw() +
+      theme(panel.border = element_blank(),
+            plot.title = element_text(size = 20),
+            plot.subtitle = element_text(size = 16,
+                                         margin = margin(0, 5, 15, 5, "pt")),
+            axis.text.x = element_text(size = 14),
+            axis.text.y = element_text(size = 14),
+            axis.title.x = element_text(size = 16,
+                                        margin = margin(10, 0, 0, 0, "pt")),
+            axis.title.y = element_text(size = 16,
+                                        margin = margin(0, 10, 0, 0, "pt")),
+            legend.position = c(1, 1),
+            legend.justification = c(1, 0),
+            legend.box = "horizontal",
+            legend.direction = "vertical",
+            legend.background = element_rect(fill = "transparent"))
+    )
+  }
+}
+
+plot_sim_fit_pars(sim_fit, K, V, E, A, P, D, L, H)
+```
+
+As we suspected, some parameters are more difficult to fit than others. The parameters $E$ and $A$ are slightly loose, and I attribute this to a lack of data since the acclimation to the task should be very short. Still, the parameter estimates don't seem wildly off. At first glance, it appears that the parameters $D$, $L$, and $H$ have poor fits for individuals 2 and 3. This lack of fitting is expected, though, because these parameters have no meaning when $P$ is close to zero as there is no learning to fit. Individual 3 does pose problems for the model, and we'll see some more evidence of this in the next plot.
+
+Now we'll plot the fits over the generated data to give a visual as to how well the fitted parameters match the data. We'll write a function to do the plotting so all of the temporary bits are nicely contained.
+
+```{r plot-sim-fits, eval=TRUE}
+plot_sim_fits <- function(fits, K, NTI,
+                          V = NA, E = NA, A = NA, D = NA,
+                          L = NA, H = NA, Y0 = NA, Y1 = NA,
+                          savepath = NULL) {
+  st <- 0
+  for (i in 1:K) {
+    n <- NTI[i]
+    Vi <- fits[i+0*K]
+    Ei <- fits[i+1*K]
+    Ai <- fits[i+2*K]
+    Pi <- fits[i+3*K]
+    Di <- fits[i+4*K]
+    Li <- fits[i+5*K]
+    Hi <- fits[i+8*K]
+    sigma_2i <- fits[i+7*K]
+    sn <- seq_len(n)
+
+    df <- data.frame(x = rep(sn, 2),
+                     data = c(Y0[(st+1):(st+n)], Y1[(st+1):(st+n)]),
+                     truth = c(exp_log(sn, V = V[i], E = E[i], A = A[i],
+                                       D = 0, L = L[i], H = H[i]),
+                               exp_log(sn, V = V[i], E = E[i], A = A[i],
+                                       D = D[i], L = L[i], H = H[i])),
+                     fit = c(exp_log(sn, V = Vi, E = Ei, A = Ai,
+                                     D = 0, L = Li, H = Hi),
+                             exp_log(sn, V = Vi, E = Ei, A = Ai,
+                                     D = Pi * Di, L = Li, H = Hi)),
+                     data_label = c(rep(1,n), rep(2,n)),
+                     fit_label = c(rep(3,n), rep(4,n)))
+    df$fit_min <- df$fit - df$fit*sqrt(sigma_2i*(sigma_2i - 1))
+    df$fit_max <- df$fit + df$fit*sqrt(sigma_2i*(sigma_2i - 1))
+    df$dumm <- c(rep(1, n), rep(2, n))
+
+    # factor levels key (since R makes it alphabetical)
+      # 1: Non-Learned Data/Truth
+      # 2: Learned Data/Truth
+      # 3: Non-Learned Fit
+      # 4: Learned Fit
+
+    print(ggplot(df) +
+      geom_ribbon(linetype="blank", alpha=0.25,
+                  aes(x = x, ymin = fit_min, ymax = fit_max,
+                      fill = factor(fit_label, levels = c(3, 4)))) +
+      geom_point(alpha = 0.75, shape = 16,
+                 aes(x = x, y = data,
+                     color = factor(data_label, levels = c(1, 2)),
+                     size = factor(dumm, levels = c(1, 2)))) +
+      geom_line(size = 1.25, alpha = 0.8,
+                aes(x = x, y = truth,
+                    color = factor(data_label, levels = c(1, 2)))) +
+      geom_line(size = 1.25, alpha = 0.6,
+                aes(x = x, y = fit,
+                    color = factor(fit_label, levels = c(3, 4)))) +
+      scale_color_manual(values = c("#999999", "#000000",
+                                    "#98c1ff", "#ff4f4f"),
+                         labels = c("Non-Learned Truth", "Learned Truth",
+                                    "Non-Learned Fit", "Learned Fit"),
+                         name = NULL) +
+      scale_fill_manual(values = c("#98c1ff", "#ff4f4f"),
+                        guide = FALSE) +
+      scale_size_manual(values = c(1.8, 1.81),
+                        labels = c("Non-Learned Data", "Learned Data"),
+                        name = NULL) +
+      guides(color = guide_legend(order = 2,
+                                  override.aes = list(shape = NA,
+                                                      size = 1.25,
+                                                      lty = rep(1, 4))),
+             size = guide_legend(order = 1,
+                                 override.aes = list(size = 2,
+                                                     shape = c(16, 16),
+                                                     color = c("#999999",
+                                                               "#000000")))) +
+      labs(title = "Simulated Data Fit",
+           x = "Trial Number", y = "Response Time (sec)",
+           subtitle = paste0("\u00B1 1 standard deviation\n",
+                             "Subject ", i, "\n",
+                             "P = ", round(Pi, 3))) +
+      theme_bw() +
+      theme(panel.border = element_blank(),
+            plot.title = element_text(size = 20),
+            plot.subtitle = element_text(size = 16,
+                                         margin = margin(0, 5, 15, 5, "pt")),
+            axis.text.x = element_text(size = 14),
+            axis.text.y = element_text(size = 14),
+            axis.title.x = element_text(size = 16,
+                                        margin = margin(10, 0, 0, 0, "pt")),
+            axis.title.y = element_text(size = 16,
+                                        margin = margin(0, 10, 0, 0, "pt")),
+            legend.position = c(1, 1),
+            legend.justification = c(1, 0),
+            legend.box = "horizontal",
+            legend.direction = "vertical",
+            legend.background = element_rect(fill = "transparent"))
+    )
+
+    if (!is.null(savepath)) {
+      ggsave(paste0(savepath, "sim_fit_", i, ".png"))
+    }
+
+    st = st + n
+  }
+}
+
+plot_sim_fits(sim_fit, K, NTI, V, E, A, D, L, H, Y0, Y1)
+```
+
+We can see that everything looks pretty good except for the last fake participant who showed just a very small decrease in median response time. The model finds it difficult to determine where the decrease occurs, and it also confuses $P$ and $D$ a little bit. Just by looking at the plot, I wouldn't say that the individual had learned the pattern, and I think such a small decrease in response time is a potential problem area for this model. However, I don't anticipate this trend appearing in the data very frequently, and I also can't see a better way of handling such data besides saying "the individual may have showed some signs of learning the pattern, but nothing really." Perhaps in practice this problematic fit could indicate that the individual exhibits atypical learning patters, and maybe that could be useful as a flag to engage with them on a more personal level?
+
+
+
+
+
+## Fitting Real Experimental Data {#fits-real}
+
+```{r examine-data-internal, eval=FALSE, include=FALSE}
+# load data, will be in the variable 'exp1'
+load(file = "../exp1.Rds")
+sub_ids <- unique(exp1$subject_id)
+
+par(mfrow=c(length(sub_ids),1))
+for (i in 1:length(sub_ids)) {
+  s0 <- subset(exp1, subject_id == sub_ids[i] & is_predictable==0)$rt/1000
+  s1 <- subset(exp1, subject_id == sub_ids[i] & is_predictable==1)$rt/1000
+  n <- min(length(s0), length(s1))
+  s0 <- s0[seq_len(n)]
+  s1 <- s1[seq_len(n)]
+  x <- seq_len(n)
+  plot(x, s1, pch=20, col='black', ylab = paste("Subject", i, sep=" "))
+  points(x, s0, pch=20, col='gray50')
+}
+```
+
+Now we'll use the model to fit data from the actual experiment. We'll take three individuals who appear to have differing levels of learning: the first will show clear evidence of learning, the second will show no evidence of learning, and the third will show some evidence of learning but will sporadically revert back to their pre-learning median response time. First we'll load the data from an RDS file because it can be compressed smaller than a CSV, and then we'll prep everything that we need to run the fitting. Note that as a precaution, we remove all the individuals with fewer than 50 trials (all of the selected individuals have more than 50 trials, but I wanted to keep the code generalizable).
+
+```{r data-prep, eval=TRUE}
+# load data, will be in the variable 'exp1'
+load(file = "../exp1.Rds")
+
+# use these 3 individuals
+sub_ids <- unique(exp1$subject_id)[c(78, 7, 10)]
+
+# prep for fitting
+K <- length(sub_ids)
+gs_idx <- vector()
+NTI <- rep(0, K)
+Y0 <- vector()
+Y1 <- vector()
+
+for (i in seq_len(K)) {
+  temp <- exp1[exp1$subject_id == sub_ids[i], ]
+  temp0 <- temp[temp$is_predictable == 0, ]$rt/1000
+  temp1 <- temp[temp$is_predictable == 1, ]$rt/1000
+  mm <- min(length(temp0), length(temp1))
+  if (mm >= 50) {
+    NTI[i] <- mm
+    Y0 <- c(Y0, temp0[seq_len(mm)])
+    Y1 <- c(Y1, temp1[seq_len(mm)])
+    gs_idx <- c(gs_idx, i)
+  }
+}
+
+good_sub_ids <- sub_ids[gs_idx]
+NTI <- NTI[NTI > 0]
+NK <- sum(NTI)
+K <- length(good_sub_ids)
+```
+
+Now that everything is ready to go, let's fit the experimental data. Again, this is a quick and dirty fit with all the precautions from the earlier fit.
+
+```{r data-fit, eval=TRUE}
+real_fit <- summary(sampling(
+  exp_log_model,
+  data = list('K' = K, 'NTI' = as.array(NTI), 'NK' = NK, 'Y0' = Y0, 'Y1' = Y1),
+  refresh = FALSE, chains = 1, iter = 500, seed = 2,
+  control = list(adapt_delta = 0.9, max_treedepth = 10)
+))$summary
+
+real_fit[, c(1, 3)]
+```
+
+Since we don't actually have the true value of the model parameters, we'll just plot how the fit compares to the data. Again, we'll wrap it all in a function and use that.
+
+```{r plot-real-fits, eval=TRUE}
+plot_real_fits <- function(fits, K, NTI, Y0 = NA, Y1 = NA, savepath = NULL) {
+  st <- 0
+  for (i in 1:K) {
+    n <- NTI[i]
+    Vi <- fits[i+0*K]
+    Ei <- fits[i+1*K]
+    Ai <- fits[i+2*K]
+    Pi <- fits[i+3*K]
+    Di <- fits[i+4*K]
+    Li <- fits[i+5*K]
+    Hi <- fits[i+8*K]
+    sigma_2i <- fits[i+7*K]
+    sn <- seq_len(n)
+
+    df <- data.frame(x = rep(sn, 2),
+                     data = c(Y0[(st+1):(st+n)], Y1[(st+1):(st+n)]),
+                     fit = c(exp_log(sn, V = Vi, E = Ei, A = Ai,
+                                     D = 0, L = Li, H = Hi),
+                             exp_log(sn, V = Vi, E = Ei, A = Ai,
+                                     D = Pi * Di, L = Li, H = Hi)),
+                     data_label = c(rep(1,n), rep(2,n)),
+                     fit_label = c(rep(3,n), rep(4,n)))
+    df$fit_min <- df$fit - df$fit*sqrt(sigma_2i*(sigma_2i - 1))
+    df$fit_max <- df$fit + df$fit*sqrt(sigma_2i*(sigma_2i - 1))
+
+    # factor levels key (since R makes it alphabetical)
+      # 1: Non-Learned Data/Truth
+      # 2: Learned Data/Truth
+      # 3: Non-Learned Fit
+      # 4: Learned Fit
+
+    print(ggplot(df) +
+      geom_ribbon(linetype="blank", alpha=0.25,
+                  aes(x = x, ymin = fit_min, ymax = fit_max,
+                      fill = factor(fit_label, levels = c(3, 4)))) +
+      geom_point(alpha = 0.75, shape = 16, size = 1.8,
+                 aes(x = x, y = data,
+                     color = factor(data_label, levels = c(1, 2)))) +
+      geom_line(size = 1.25, alpha = 0.6,
+                aes(x = x, y = fit,
+                    color = factor(fit_label, levels = c(3, 4)))) +
+      scale_color_manual(values = c("#999999", "#000000",
+                                    "#98c1ff", "#ff4f4f"),
+                         labels = c("Non-Learned Data", "Learned Data",
+                                    "Non-Learned Fit", "Learned Fit"),
+                         name = NULL) +
+      scale_fill_manual(values = c("#98c1ff", "#ff4f4f"),
+                        guide = FALSE) +
+      guides(color = guide_legend(override.aes = list(size = c(2, 2, 1.25, 1.25),
+                                                      shape = c(16, 16, NA, NA),
+                                                      lty = c(NA, NA, 1, 1)))) +
+      labs(title = "Experimental Data Fit",
+           x = "Trial Number", y = "Response Time (sec)",
+           subtitle = paste0("\u00B1 1 standard deviation\n",
+                             "Subject ", i, "\n",
+                             "P = ", round(Pi, 3))) +
+      theme_bw() +
+      theme(panel.border = element_blank(),
+            plot.title = element_text(size = 20),
+            plot.subtitle = element_text(size = 16,
+                                         margin = margin(0, 5, 15, 5, "pt")),
+            axis.text.x = element_text(size = 14),
+            axis.text.y = element_text(size = 14),
+            axis.title.x = element_text(size = 16,
+                                        margin = margin(10, 0, 0, 0, "pt")),
+            axis.title.y = element_text(size = 16,
+                                        margin = margin(0, 10, 0, 0, "pt")),
+            legend.position = c(1, 1),
+            legend.justification = c(1, 0),
+            legend.box = "horizontal",
+            legend.direction = "vertical",
+            legend.background = element_rect(fill = "transparent"))
+    )
+
+    if (!is.null(savepath)) {
+      ggsave(paste0(savepath, "real_fit_", i, ".png"))
+    }
+
+    st = st + n
+  }
+}
+
+plot_real_fits(real_fit, K, NTI, Y0, Y1)
+```
+
+We see similar results compared to fitting the simulated data. The model identifies both the individual who showed evidence of learning the pattern, and the individual who showed no evidence of learning the pattern. The trouble again arises when the data show weird inconsistencies in response times. The third individual showed maybe some signs of learning the pattern fairly early on in the experiment, but the variance seems to increase upon adjusting to the task. The model struggles to fit this, and maybe we can treat this as an indication of a poorly performing participant who needs closer examination? I think the only way to fit a model to this type of behavior is to incorporate some kind of stochasticity into the model to allow for sporadic reversions back to the pre-learning median response time. The tricky thing is that we don't want to overfit the data and end up fitting a bunch of noise because the participants were distracted while completing the task. We also need to be careful about the model potentially confusing regular variance in the response times for this newfangled stochasticity. I suppose we could change the $\hat{\sigma^2}$ parameter to change upon learning, and allow that to increase so that the variance increases. I don't know if trying to fit bored people is particularly fruitful though, and if it's just the occassional response time that reverts back to the pre-learning median then I think the stochastic part should handle that well enough.
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+# References

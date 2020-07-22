@@ -1,9 +1,7 @@
-// logistic model with early exponential adaptation
+// early exponential adaptation with step learning curve
+  // learning curve is a simple step function
   // response times are lognormally distributed
   // fit is_pred=0 and is_pred=1 data simultaneously
-  // probability of learning is included
-  // fit multiple individuals simultaneously
-  // hierarchy of parameters
 
 functions { // define functions used in model
   real mylognormal_lpdf(real z, real mu, real sigma_2) {
@@ -26,14 +24,16 @@ parameters { // define parameters (and their bounds) used in the model
 
   real<lower=0, upper=1> P; // probability of learning
   real<lower=0, upper=1> D;  // scale of learning "drop"
-  real<lower=0> L;  // learning rate
   real<lower=0, upper=n> H;  // horizontal shift in onset of learning
 
   real<lower=0> sigma_2;  // main component of variance in response times
 }
 
-model { // define the Bayesian hierarchical model
-  // Things we'll use inside the loops
+transformed parameters {
+  real D_scaled = V * D;
+}
+
+model {
   real mun;
   real mul;
   real sig;
@@ -44,7 +44,6 @@ model { // define the Bayesian hierarchical model
   A ~ gamma(2.5, 10);
   P ~ beta(0.01, 0.01);
   D ~ beta(2.5, 2.5);
-  L ~ gamma(1.5, 0.25);
   H ~ cauchy(n*1.0/2, 25);
   sigma_2 ~ gamma(2, 10);
   sig = log( sigma_2 );
@@ -55,7 +54,11 @@ model { // define the Bayesian hierarchical model
     // easier to interpret; thus we use mu -> log(mu) so that
     // median(lognorm(z | log(mu), sigma)) = exp(log(mu)) = mu
     mun = log( V + E*exp(-A*trial) );
-    mul = log( V + E*exp(-A*trial) ) + log1m(D/( 1 + exp(-L*(trial-H))) );
+    if (trial >= H) {
+      mul = log( V + E*exp(-A*trial) ) + log1m(D_scaled);
+    } else {
+      mul = log( V + E*exp(-A*trial) );
+    }
 
     target += mylognormal_lpdf(yn[trial] | mun, sig);
     target += log_sum_exp(
@@ -63,6 +66,7 @@ model { // define the Bayesian hierarchical model
       log1m(P) + mylognormal_lpdf(yl[trial] | mun, sig)
     );
   }
+
 }
 
 generated quantities {
@@ -76,7 +80,11 @@ generated quantities {
 
   for (trial in 1:n) {
     mun = log( V + E*exp(-A*trial) );
-    mul = log( V + E*exp(-A*trial) ) + log1m(D/( 1 + exp(-L*(trial-H))) );
+    if (trial >= H) {
+      mul = log( V + E*exp(-A*trial) ) + log1m(D_scaled);
+    } else {
+      mul = log( V + E*exp(-A*trial) );
+    }
 
     ylpred[trial] = lognormal_rng(log_sum_exp(log(P) + mul, log1m(P) + mun),
                                   sig);

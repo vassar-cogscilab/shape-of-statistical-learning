@@ -22,7 +22,7 @@ body {
   clear: both;
   margin: 0 0 10px 10px;
   padding: 4px;
-  width: 400px;
+  max-width: 400px;
   border: 1px solid #CCCCCC;
   border-radius: 5px;
 
@@ -39,14 +39,21 @@ body {
   #TOC ul {
     padding-left: 40px;
     margin-left: -1.5em;
-    margin-top: 5px;
-    margin-bottom: 5px;
+    margin-top: .25em;
+    margin-bottom: .25em;
   }
   #TOC ul ul {
     margin-left: -2em;
+    margin-top: 0px;
+    margin-bottom: 6px;
   }
   #TOC li {
-    line-height: 16px;
+    line-height: 1.4;
+    margin-bottom: 5px;
+  }
+  #TOC li li {
+    line-height: 1.15;
+    margin-bottom: 0px;
   }
 
 table {
