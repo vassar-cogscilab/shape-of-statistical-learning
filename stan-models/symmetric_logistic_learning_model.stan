@@ -11,75 +11,103 @@ functions { // define functions used in model
 }
 
 data { // these values are input to the sampling function
-  int<lower=1> n; // number of trials performed by the individual
-  vector<lower=0>[n] yn; // RT data from the individual for each trial of is_predictable=0
-  vector<lower=0>[n] yl; // RT data from the individual for each trial of is_predictable=1
+  int<lower=1> k; // number of individuals
+  int<lower=1> nk[k]; // array of number of trials performed by each individual
+  int<lower=k> total_length; // total length of all RT data
+  vector<lower=0>[total_length] yn; // RT data from the individual for each trial of is_predictable=0
+  vector<lower=0>[total_length] yl; // RT data from the individual for each trial of is_predictable=1
+}
+
+transformed data { // manipulations of the data to use in parameter bounds
+  vector<lower=1>[k] upperH = to_vector(nk); // (rough) upper bound for H
 }
 
 parameters { // define parameters (and their bounds) used in the model
-  real<lower=0, upper=2> V;  // vertical shift of all repsonse times
+  vector<lower=0, upper=2>[k] V;  // vertical shift of all repsonse times
 
-  real<lower=0> E;  // overall scale of exponential
-  real<lower=0> A;  // adaptation rate
+  vector<lower=0>[k] E;  // overall scale of exponential
+  vector<lower=0>[k] A;  // adaptation rate
 
-  real<lower=0, upper=1> P; // probability of learning
-  real<lower=0, upper=1> D;  // scale of learning "drop"
-  real<lower=0> L;  // learning rate
-  real<lower=0, upper=n> H;  // horizontal shift in onset of learning
+  vector[k] S; // shift in median learned response time relative to non-learned
 
-  real<lower=0> sigma_2;  // main component of variance in response times
+  vector<lower=0, upper=1>[k] D;  // scale of learning "drop"
+  vector<lower=0>[k] L;  // learning rate
+  vector<lower=0, upper=1>[k] H_raw;  // horizontal shift in onset of learning (raw)
+
+  vector<lower=0>[k] sigma2_n; // main component of variance in non-learned response times
+  vector<lower=0>[k] sigma2_l; // main component of variance in learned response times
+}
+
+transformed parameters { // manipulations of the parameters (really, just their bounds)
+  vector[k] H = H_raw .* upperH;
 }
 
 model {
-  real mun;
-  real mul;
-  real sig;
+  real mu_n;
+  real mu_l;
+  real sig_n;
+  real sig_l;
+  int st = 0;
 
   // Prior distributions on parameters
   V ~ gamma(2.5, 2.5);
   E ~ gamma(2.5, 10);
   A ~ gamma(2.5, 10);
-  P ~ beta(0.01, 0.01);
+  S ~ normal(0, 0.5);
   D ~ beta(2.5, 2.5);
   L ~ gamma(1.5, 0.25);
-  H ~ cauchy(n*1.0/2, 25);
-  sigma_2 ~ gamma(2, 10);
-  sig = log( sigma_2 );
+  H_raw ~ beta(1.5, 1.5);
 
-  // Likelihood distribution for model
-  for (trial in 1:n) { // cannot vectorize because cannot divide by vector
-    // We log mu so that the paramters directly determine the median so it's
-    // easier to interpret; thus we use mu -> log(mu) so that
-    // median(lognorm(z | log(mu), sigma)) = exp(log(mu)) = mu
-    mun = log( V + E*exp(-A*trial) );
-    mul = log( V + E*exp(-A*trial) ) + log1m(D/( 1 + exp(-L*(trial-H))) );
+  sigma2_n ~ gamma(2, 10);
+  sigma2_l ~ gamma(2, 10);
 
-    target += mylognormal_lpdf(yn[trial] | mun, sig);
-    target += log_sum_exp(
-      log(P) + mylognormal_lpdf(yl[trial] | mul, sig),
-      log1m(P) + mylognormal_lpdf(yl[trial] | mun, sig)
-    );
+  // Loop through each individual
+  for (ind in 1:k) {
+    sig_n = log( sigma2_n[ind] );
+    sig_l = log( sigma2_l[ind] );
+
+    // Likelihood distribution for model
+    for (trial in 1:nk[ind]) {
+      // We log mu so that the paramters directly determine the median so it's
+      // easier to interpret; thus we use mu -> log(mu) so that
+      // median(lognorm(z | log(mu), sigma)) = exp(log(mu)) = mu
+      mu_n = log( V[ind] + E[ind]*exp(-A[ind]*trial) );
+      mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind] ) +
+             log1m( D[ind]/( 1 + exp(-L[ind]*(trial-H[ind]))) );
+
+      target += mylognormal_lpdf(yn[st+trial] | mu_n, sig_n);
+      target += mylognormal_lpdf(yl[st+trial] | mu_l, sig_l);
+    }
+
+    st += nk[ind];
   }
 }
 
 generated quantities {
-  real mun;
-  real mul;
-  real sig;
-  real ylpred[n];
-  real log_lik[n];
+  real mu_n;
+  real mu_l;
+  real sig_n;
+  real sig_l;
+  real ynpred[total_length];
+  real ylpred[total_length];
+  real log_lik[total_length];
+  int st = 0;
 
-  sig = log( sigma_2 );
+  // Loop through each individual
+  for (ind in 1:k) {
+    sig_n = log( sigma2_n[ind] );
+    sig_l = log( sigma2_l[ind] );
 
-  for (trial in 1:n) {
-    mun = log( V + E*exp(-A*trial) );
-    mul = log( V + E*exp(-A*trial) ) + log1m(D/( 1 + exp(-L*(trial-H))) );
+    for (trial in 1:nk[ind]) {
+      mu_n = log( V[ind] + E[ind]*exp(-A[ind]*trial) );
+      mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind]) +
+             log1m( D[ind]/( 1 + exp(-L[ind]*(trial-H[ind]))) );
 
-    ylpred[trial] = lognormal_rng(log_sum_exp(log(P) + mul, log1m(P) + mun),
-                                  sig);
-    log_lik[trial] = log_sum_exp(
-      log(P) + mylognormal_lpdf(yl[trial] | mul, sig),
-      log1m(P) + mylognormal_lpdf(yl[trial] | mun, sig)
-    );
+      ynpred[st+trial] = lognormal_rng(mu_n, sig_n);
+      ylpred[st+trial] = lognormal_rng(mu_l, sig_l);
+      log_lik[st+trial] = mylognormal_lpdf(yl[st+trial] | mu_l, sig_l);
+    }
+
+    st += nk[ind];
   }
 }

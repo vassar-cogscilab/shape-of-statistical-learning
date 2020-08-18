@@ -48,11 +48,13 @@ body {
     margin-bottom: 6px;
   }
   #TOC li {
+    list-style: disk outside;
     line-height: 1.4;
     margin-bottom: 5px;
   }
   #TOC li li {
-    line-height: 1.15;
+    list-style: circle outside;
+    line-height: 1.2;
     margin-bottom: 0px;
   }
 
@@ -138,10 +140,13 @@ ul {
   margin-top: 0;
 }
   ul li {
-    list-style: circle outside;
+    list-style: disk outside;
   }
   ul ul {
     margin-bottom: 0;
+  }
+  ul ul li {
+    list-style: circle outside;
   }
 
 pre, code {

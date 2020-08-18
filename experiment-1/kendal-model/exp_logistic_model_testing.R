@@ -308,8 +308,55 @@ plot_real_fits <- function(fits, K, NTI, Y0 = NA, Y1 = NA, savepath = NULL) {
   }
 }
 
+sim_exp_log <- function(trial, V, E, A, D, L, H, var,
+                        rand = FALSE, bored = FALSE) {
+  sim <- rlnorm(length(trial),
+                log(exp_log(trial = trial, E = E, A = A, V = V,
+                            D = D, L = L, H = H)),
+                log(var))
+
+  if (bored) {
+    sim <- sim + 1e-5*E*exp(A*(trial-H))
+  }
+
+  if (rand) {
+  rand_idx <- sample((H/2):length(sim), H/4)
+  sim[rand_idx] <- rlnorm(length(rand_idx),
+                log(exp_log(trial = rand_idx, E = E, A = A, V = V,
+                            D = 0, L = L, H = H)),
+                log(var))
+  }
+
+  return(sim)
+}
 
 
+sN <- 100
+trial <- 1:sN
+V <- 1
+E <- .25
+A <- .25
+D <- .4
+L <- .4
+H <- sN/2
+sig <- 1.15
+
+sY0 <- sim_exp_log(trial, V, E, A, 0, L, H, sig)
+sY1 <- sim_exp_log(trial, V, E, A, D, L, H, sig, rand = TRUE, bored = TRUE)
+
+mi <- min(sY0, sY1)
+ma <- max(sY0, sY1)
+
+plot(trial, sY0, pch = 20, col = "goldenrod1", ylim = c(mi, ma))
+  points(trial, sY1, pch = 20, col = "black")
+
+x1 <- seq_len(100)
+Be <- 1
+Ba <- .25
+plot(x1, Be*exp(Ba*(x1-80)), type = "l")
+
+x <- seq(0, 10, by = 0.1)
+plot(x, dgamma(x, 2.5, 10), type = "l")
 ########## Simulated Data
 sK <- 1 # number of individuals
 sN <- 100 # number of trials for each individual (same for all)
@@ -321,7 +368,7 @@ V <- c(1.1, 1.5, .75)
 E <- c(.25, .25, .25)
 A <- c(.25, .25, .25)
 P <- c(1, 0, 1)
-D <- c(.1, 0, .1)
+D <- c(.4, 0, .1)
 L <- c(.4, .4, .4)
 H <- c(50, 60, 30)
 st <- 0
@@ -346,6 +393,26 @@ plot_sim_fits(sim_fit, sK, sNTI, V, E, A, D, L, H, sY0, sY1)
 
 ########## Real-World Data
 load(file = "experiment-1/kendal-model/exp1.Rds")
+
+# Visually examine data (optional)
+sub_ids <- unique(exp1$subject_id)
+sub_ids <- sub_ids[85]
+par(mfrow=c(length(sub_ids),1))
+for (i in 1:length(sub_ids)) {
+  s0 <- subset(exp1, subject_id == sub_ids[i] & is_predictable==0)$rt/1000
+  s1 <- subset(exp1, subject_id == sub_ids[i] & is_predictable==1)$rt/1000
+  n <- min(length(s0), length(s1))
+  s0 <- s0[seq_len(n)]
+  s1 <- s1[seq_len(n)]
+  x <- seq_len(n)
+  plot(x, s1, pch=20, col='black', ylab = paste("Subject", i, sep=" "))
+  points(x, s0, pch=20, col='goldenrod1')
+}
+
+
+
+
+
 sub_ids <- unique(exp1$subject_id)[c(78, 7, 10)]
 sub_ids <- sub_ids[3]
 rK <- length(sub_ids)

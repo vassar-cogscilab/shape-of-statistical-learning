@@ -1,5 +1,5 @@
 ---
-title: "Description of the Models We Used"
+title: "Model Definitions and Analysis"
 author: "Vassar CogSci Lab Team"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 bibliography: ../references.bib
@@ -10,7 +10,7 @@ output:
     fig_width: 8
     fig_height: 6
 vignette: >
-  %\VignetteIndexEntry{Description of the Exponential-Logistic Model}
+  %\VignetteIndexEntry{Model Definitions and Analysis}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -32,17 +32,27 @@ MathJax.Hub.Config({
 <div id="TOC">
 <ul>
 <li><a href="#exp">The Experiment (Data Collection)</a></li>
-<li><a href="#models">The Models</a>
+<li><a href="#def">Model Definitions</a>
   <ul>
-  <li><a href="#models-no">No Learning</a></li>
-  <li><a href="#models-step">Step Learning</a></li>
-  <li><a href="#models-sym">Symmetric Logistic Learning</a></li>
-  <li><a href="#models-asym">Asymmetric Logistic Learning</a></li>
+  <li><a href="#def-no">No Learning</a></li>
+  <li><a href="#def-step">Step Learning</a></li>
+  <li><a href="#def-sym">Symmetric Logistic Learning</a></li>
+  <li><a href="#def-asym">Asymmetric Logistic Learning</a></li>
   </ul></li>
-<li><a href="#fits">Sample Fits</a>
+<li><a href="#rec">Model Recovery</a>
   <ul>
-  <li><a href="#fits-sim">Fitting Simulated Data</a></li>
-  <li><a href="#fits-real">Fitting Real Experimental Data</a></li>
+  <li><a href="#rec-nolearn">No Evidence of Learning</a></li>
+  <li><a href="#rec-learn">Strong Evidence of Learning</a></li>
+  <li><a href="#rec-small">Consistent but Small Decrease in Response Times</a></li>
+  <li><a href="#rec-ret">Sporadic Return to Baseline Response Time</a></li>
+  <li><a href="#rec-inc">Increased Response Times at the End of the Experiment</a></li>
+  </ul></li>
+<li><a href="#comp">Formal Model Comparison (just a sample for now)</a>
+  <ul>
+  <li><a href="#comp-ppf">Posterior Predictive Fits</a></li>
+  <li><a href="#comp-bayes">Bayes Factor</a></li>
+  <li><a href="#comp-loo">Loo</a></li>
+  <li><a href="#fits-real">Stacking Weights</a></li>
   </ul></li>
 <li><a href="#references">References</a></li>
 </ul>
@@ -86,116 +96,412 @@ Just a quick question about experiment design (because now I'm starting to think
 
 
 
-# The Models {#models}
+# The Models {#def}
 <hr class="sec1">
 
 The starting point of these models is to define how the response times are distributed. As discussed by @dablander2019bayesian, we treat each response time from each subject to be Log-Normally distributed with parameters $\mu$ and $\sigma$; we'll write it as $rt \sim \mathcal{LN}(\mu, \sigma)$. The Log-Normal distribution has some useful properties for our application and we'll take a quick look at some of them, but for extended information on the Log-Normal distribution see [its Wikipedia page](https://en.wikipedia.org/wiki/Log-normal_distribution). Primarily, the Log-Normal distribution has no support for negative response times, yet it resembles something of a normal distribution; these properties are consistent with the experimental data.
 
 The mean, mode, and variance of the distribution are all slightly messy expressions involving both $\mu$ and $\sigma$, but the median of the distribution is a very clean $\exp(\mu)$. In each of the expressions for these basic properties, the parameters $\mu$ and $\sigma^2$ appear exponentiated. To exploit this structure and make our parameterization more convenient, we instead use the transformed parameters $\hat{\mu} = \log(\mu)$ and $\hat{\sigma^2} = \log(\sigma^2)$. This transformation allows us to easily eliminate the exponentiation in the properties, and in particular it allows us to work directly with the median:
 \begin{equation} \label{eqn:log-hat}
-\begin{aligned}
-\text{med}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} \right] = \mu,\\[3ex]
-\text{mean}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} + \frac{1}{2} \hat{\sigma^2} \right] = \mu \sigma,\\
-\text{mode}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} - \hat{\sigma^2} \right] = \frac{\mu}{\sigma^2},\\
-\text{var}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \left( \exp\left[ \hat{\sigma^2} \right] - 1 \right) \exp\left[ 2 \hat{\mu} + \hat{\sigma^2} \right] = \left( \sigma^2 - 1 \right) \mu^2 \sigma^2.
-\end{aligned}
-\nonumber
+  \begin{aligned}
+    \text{med}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} \right] = \mu,\\[3ex]
+    \text{mean}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} + \frac{1}{2} \hat{\sigma^2} \right] = \mu \sigma,\\
+    \text{mode}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \exp\left[ \hat{\mu} - \hat{\sigma^2} \right] = \frac{\mu}{\sigma^2},\\
+    \text{var}\big(rt \sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2})\big) &= \left( \exp\left[ \hat{\sigma^2} \right] - 1 \right) \exp\left[ 2 \hat{\mu} + \hat{\sigma^2} \right] = \left( \sigma^2 - 1 \right) \mu^2 \sigma^2.
+  \end{aligned}
+  \nonumber
 \end{equation}
 
 Since we will use the transformed parameter $\hat{\mu}$, our characterization of $\mu$ will equal the median of the distribution. We'll build the model around this fact; when we define a functional form for $\mu$, we're actually defining the behavior of the median of the response time distribution. The main goal of the model is to capture a *possible* consistent decrease in response time after a specific trial, or in other words to identify a decrease in the median response time. This is why we're going to work with $\hat{\mu}$ &ndash; so that we can directly change the median of the response time distribution.
 
 A (potentially beneficial) side effect of working with $\hat{\mu}$ is that a decrease in $\hat{\mu}$ causes not only a decrease in the median response time, but it also causes a decrease in the variance of the response times (see the bottom equation in the above block). Josh and I had discussed this feature of the data a long time ago, but it seems to be logical that the response times are less variant once the participant learns the pattern. I haven't placed much emphasis on $\sigma^2$ because it mainly controls the variance of the response time distribution, so it just gets fit with the data.
 
-The following subsections will define functional forms for $\hat{\mu}$ that enable it to capture the evidence of learning (or lack of evidence) shown by each participant in the study. We will start with the simplest model, and gradually add more features.
-
-
-
-
-## No Learning {#models-no}
-
-This is the most basic model with just an exponential curve to fit the initial adaptation to the task. Assuming no learning occurs, this model is designed to fit the initial adaptation to the experimental task. This is the most basic model that we will test, as it defines the functional form for $\hat{\mu}$ as only a decaying exponential curve with a few parameters for fitting the data. The model for a single subject is:
-
-\begin{equation} \label{eqn:models-no}
-\begin{aligned}
-rt &\sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2}),\\[2ex]
-\hat{\mu} &= \log\big( V + E \cdot \exp(-A \cdot t) \big);\\[2ex]
-\end{aligned}
-\nonumber
+Each individual has response time data for both non-learned letters (denoted as $rt_n$) and learned letters (denoted $rt_\ell$). The response times of the non-learned letters should be consistent with the baseline response time for a random letter as the start of the pattern is randomly placed in the sequence. In contrast, the response times of the learned letters may be consistently shorter than the baseline as the participant may be able to anticipate the letters that appear later in the pattern. Since we could potentially have two distinct clusters of response times, we will fit these two clusters of response times separately; this yields fitting two distinct $\hat{\mu}$ (i.e., $\hat{\mu_n}$ and $\hat{\mu_\ell}$), but we will use the same $\hat{\sigma^2}$ for each cluster. For each individual, the response time data will be modeled as
+\begin{equation} \label{eqn:models}
+  \begin{aligned}
+    rt_n &\sim \mathcal{LN}(\hat{\mu_n}, \hat{\sigma^2}),\\[2ex]
+    rt_\ell &\sim \mathcal{LN}(\hat{\mu_\ell}, \hat{\sigma^2}).\\[2ex]
+  \end{aligned}
+  \tag{M.0}
 \end{equation}
-where $t$ is the trial iteration, $t \in \{1, \dots, n\}$, and $n$ is the number of trials performed in the experiment by that individual. 
+
+The following subsections will define functional forms for $\hat{\mu_n}$ and $\hat{\mu_\ell}$ that enable the model to capture the evidence of learning (or lack of evidence) shown by each participant in the study. We will start with the simplest model and gradually add more features. Since the models will successively build on each other, the same parameters will arise in multiple models; although repetitive, we include the definitions of all parameters for completeness, but note that the old parameters will never be redefined. As we introduce each model, we will load the pre-compiled Stan model into the `R` workspace.
+
+```{r preamble, eval=TRUE}
+# load rstan and set options
+library("rstan")
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+Sys.setenv(LOCAL_CPPFLAGS = '-march=corei7 -mtune=corei7')
+
+# set variable for filepaths depending on the operating system
+if (.Platform$OS.type == "windows") { os <- "windows" } else { os <- "linux" }
+```
+
+Even though we will not read and compile the models from scratch here, the `R` code to do so is available in the raw RMarkdown file.
+
+```{r read-stan, eval=FALSE, include=FALSE}
+# no learning
+no_learning_model_stanc <- stanc(
+  file = "stan-models/no_learning_model.stan",
+  model_name = "no_learning_model")
+no_learning_model <- stan_model(
+  stanc_ret = no_learning_model_stanc)
+save(no_learning_model,
+  file = paste0("stan-models/compiled/", os,
+    "/no_learning_model.Rds"),
+  compress = "xz", compression_level = 9)
+
+# step learning
+step_learning_model_stanc <- stanc(
+  file = "stan-models/step_learning_model.stan",
+  model_name = "step_learning_model")
+step_learning_model <- stan_model(
+  stanc_ret = step_learning_model_stanc)
+save(step_learning_model,
+  file = paste0("stan-models/compiled/", os,
+    "/step_learning_model.Rds"),
+  compress = "xz", compression_level = 9)
+
+# symmetric logistic learning
+symmetric_logistic_learning_model_stanc <- stanc(
+  file = "stan-models/symmetric_logistic_learning_model.stan",
+  model_name = "symmetric_logistic_learning_model")
+symmetric_logistic_learning_model <- stan_model(
+  stanc_ret = symmetric_logistic_learning_model_stanc)
+save(symmetric_logistic_learning_model,
+  file = paste0("stan-models/compiled/", os,
+    "/symmetric_logistic_learning_model.Rds"),
+  compress = "xz", compression_level = 9)
+
+# asymmetric logistic learning
+asymmetric_logistic_learning_model_stanc <- stanc(
+  file = "stan-models/asymmetric_logistic_learning_model.stan",
+  model_name = "asymmetric_logistic_learning_model")
+asymmetric_logistic_learning_model <- stan_model(
+  stanc_ret = asymmetric_logistic_learning_model_stanc)
+save(asymmetric_logistic_learning_model,
+  file = paste0("stan-models/compiled/", os,
+    "/asymmetric_logistic_learning_model.Rds"),
+  compress = "xz", compression_level = 9)
+```
 
 
 
 
-## Step Learning {#models-step}
+<div class="indent2">
+## No Learning Model {#def-no}
 
-This includes a drop in the median response time to allow for the evidence of learning. This one fits this data the best because the learning is instantaneous, but it's inflexible for a more general learning process.
+```{r load-no-learn, eval=TRUE}
+load(paste0("stan-models/compiled/", os, "/no_learning_model.Rds"))
+```
 
+Assuming no learning occurs, this model is designed to fit the initial adaptation to the experimental task. This is the most basic model that we will test, as it defines the functional form for $\hat{\mu}$ as only a decaying exponential curve with a few parameters for fitting the data. The model for a single subject is:
 
-
-
-## Symmetric Logistic Learning {#models-sym}
-
-This model allows the drop in the median response time to be gradual. This one can approach a step function and offers a good compromise between flexibility/generality and interpretable parameters.
-
-We define $\hat{\mu}$ as the (log of) mixture of two differentiable (and continuous) functions that can be fully parameterized by seven parameters: $\mu' = \log(f(P, V, E, A, D, L, H))$. All of these parameters and $\sigma^2$ are detailed in the list below, including any restrictions on their domains:
-
-\begin{itemize}[label=$\cdot$, itemsep=0pt]
-	\item $P \in [0, 1]$ is the probability that the individual learned the pattern during the experiment. If the fitted value of $P$ is close to $1$, that indicates the subject demonstrated recognition of the pattern; however, fitted values of $P$ close to $0$ indicates that the subject failed to recognize the existence of a pattern. Fitted values of $P$ that are neither near $0$ nor $1$ indicate confusion- either in the fitting or the participant during the experiment. Such fitted values of $P$ often occur if the participant shows some consistently low response times after a certain trial, but with sporadic response times consistent with the pre-learning baseline (we had discussed this behavior in our meeting on 29 June 2020). Typical fitted values really vary depending on how consistent the participants' response times are.
-	\item $V \in [0, 2]$ represents the median pre-learning response time in seconds; technically, it is the vertical shift of all response times. Naturally, it should not be negative because response times cannot be negative in this experiment. Furthermore, the maximum value is 2 seconds because each letter was only visible in the window for 2 seconds before the next letter appeared and the response time was cut off. Typical fitted values are around $1$ second.
-	\item $E \in [0, \infty)$ is the overall scale of the exponential used to model the period of adaptation to the task. It must be non-negative because it must be monotonically decreasing as the subject gets used to the experiment. Typical fitted values are somewhere around $0.3$.
-	\item $A \in [0, \infty)$ is the adaptation rate to the task. It again must be non-negative so that the exponential term decays instead of grows. Typical fitted values are somewhere around $0.3$.
-	\item $D \in [0, 1]$ is the scale of the learning "drop." It is the scaled difference between the mean pre-learning response time and the mean post-learning response time. A value near $0$ indicates a small decrease in response time (a post-learning response time the same as that of the pre-learning); a value near $1$ indicates a massive decrease in response time (a post-learning response time of $0$). Note that $D$ is basically meaningless if learning does not occur, that is, if $P$ is near $0$. Typically we observe fitted values around $0.4$ for a participant who demonstrated learning behavior in the experiment.
-	\item $L \in [0, \infty)$ is the learning rate of the subject. A negative learning rate would cause the logistic part of the expression to increase rather than decrease. Again, if $P$ is near $0$, $L$ has little meaning. Fitted values for this parameter vary a lot because the decrease in response times tend to happen over one trial (the response times decrease instantly as soon as the participant recognizes the pattern). Since the learning does not happen gradually, the fitted values for this parameter are likely not too useful for this experiment.
-	\item $H \in [0, n]$, is the onset of learning, where $n$ is the number of trials performed in the experiment by the individual. $H$ represents how many trials it takes for the subject to learn the pattern, and again has little meaning if $P$ is near $0$. Fitted values for $H$ really vary by individual and pattern difficulty- easier patterns are recognized earlier than more difficult patterns.
-	\item $\sigma^2 \in [0, \infty)$ drives the variance in the response times more than $\mu'$, so we treat it as a proxy for the variance; naturally, it should be non-negative.
-\end{itemize}
-
-With those parameter definitions in order, we can write the expressions that define how the response time distribution changes as the participant progresses through the trials in the experiment. As stated above, the model will have a stagnant $\sigma^2$ and a mixture of two functions for $\mu$: one for the case where the participant *does not learn* the pattern, and one for the case where the participant *does learn* the pattern. The model for a single subject is:
-
-\begin{equation} \label{eqn:model}
-\begin{aligned}
-rt &\sim \mathcal{LN}(\hat{\mu}, \hat{\sigma^2}),\\[2ex]
-\hat{\mu} &= \log\big( P \cdot \gamma_1 + (1-P) \cdot \gamma_0 \big),\\[2ex]
-\gamma_\ell &= \Big( V + E \cdot \exp(-A \cdot t) \Big) \cdot \bigg( 1 - \frac{D}{1+\exp(-L \cdot (t-H))} \bigg),\\
-\gamma_n &= V + E \cdot \exp(-A \cdot t),
-\end{aligned}
+\begin{equation} \label{eqn:model-no}
+  \begin{aligned}
+    \hat{\mu_n} &= \log\big( V + E \cdot \exp(-A \cdot t) \big),\\[2ex]
+    \hat{\mu_\ell} &= \log\big( (V + S) + E \cdot \exp(-A \cdot t) \big),\\[2ex]
+  \end{aligned}
+  \tag{M.1}
 \end{equation}
-where $t$ is the trial iteration, $t \in \{1, \dots, n\}$, and $n$ is the number of trials performed in the experiment by that individual. The case where the participant learns the pattern is represented by $\gamma_\ell$, and $\gamma_n$ represents the participant failing to learn the pattern. The expression for $\gamma_n$ is essentially the baseline response time for the individual when they are faced with random letters (i.e. prior to any possible learning). The expression for $\gamma_\ell$ is very similar to that of $\gamma_n$, but it includes the functional form that describes the decrease in median response time. Basically we want the model to choose between these two functional forms for $\hat{\mu}$, and it assigns a probability, $P$, to this choice.
 
-Note that you can rewrite the expression for $\hat{\mu}$ and simplify it slightly. However, this simplification results in $\Big( V + E \cdot \exp(-A \cdot t) \Big) \bigg( 1 - \frac{P \cdot D}{1+\exp(-L \cdot (t-H))} \bigg)$, where the parameters $P$ and $D$ essentially merge into one parameter that combines the probability of learning and the scale of the decrease in response time. Combining these two parameters into one could be another way to model this behavior, but I think they lose their interpretability this way. I prefer to have two interpretable parameters rather than one confusing parameter, so I would suggest using the original formulation to keep $P$ and $D$ separate.
+where $t$ is the trial iteration, $t \in \{1, \dots, T\}$, and $T$ is the number of trials performed in the experiment by that individual. The parameters are explained in detail in the following list:
 
-Since we have some pertinent information and beliefs as to what these parameters should be and how they should be fit, we place priors on them. For the most part these priors will be only weakly informative because we want the data to primarily drive the fitting, but there are a few exceptions. For $P$, the probability of learning, we would ideally like this to be binary; however, Stan cannot handle discrete parameters in its models so we settle for a very, very sharp Beta prior. The hyperparameters for this prior very strongly suggest that the probability of learning be as close to either $0$ or $1$ as possible.
-
-The hyperprior for $D$, the scale of the decrease in response time, was originally going to be pushed strongly away from zero in an effort to avoid fitting non-learners with a $P$ near $1$ and a $D$ near $0$. With the strong prior on $P$ this turned out to be unnecessary so I left the prior on $D$ to be somewhat informative, although it does discourage values near $0$ or $1$ because neither is particularly likely/useful.
-
-You might notice that the Gamma prior on $V$ technically has support for any non-negative real number, yet the response times themselves are bounded above by 2 seconds. There aren't any useful priors that are defined on only $[0, 2]$, but we could use a prior bounded on $[0, 1]$ and scale it to support $[0, 2]$ (such as a Beta distribution). I opted for the Gamma prior so that the model would be more easily generalizable for other data, but the Stan model defines an upper bound of 2 seconds when fitting $V$.
-
-The onset of learning, $H$, receives an uninformative Cauchy prior because this distribution is similar to a normal distribution but with a fatter tail. If learning occurs, it's unlikely to occur very early in the experiment so we want to discourage the model from fitting a small value of $H$. On the other hand, we don't want the model to fit a tiny decrease in the median response time for the last trial if it just happens to be slightly lower. While the Cauchy prior does technically support any real number (including negative numbers, zero, and numbers above), the Stan model bounds $H$ below by $0$ and above by the number of trials completed by the individual (so the upper bound is different for each participant). Ultimately, this Cauchy prior suggests that the learning occurs somewhere around halfway through the experiment, but it doesn't prevent the model from fitting quick or slow learners. We also might like to fit $H$ to an integer instead of a real number so we can identify the specific trial at which the individual demonstrated learning, but Stan can't do discrete parameters so we're stuck with this. However, I don't think it's so bad for the parameter estimate to say that the demonstration of learning occurred between trials because I think that the participants might have realized there was a pattern after typing it for the $H^\text{th}$ time. so that the data drives the fitting more than the prior. 
-
-The other priors are really just weakly informative distributions based on their domains. The priors on $E$ and $A$ are nothing special because I was more focused on the classification of learners vs non-learners and the characterization of when the learning occurs. As a result, these parameters are stuck with some simple Gamma priors. The Learning rate, $L$, is very difficult to fit since the decrease in response time happens within one trial, so this also just gets a simple Gamma prior.
+* $V \in [0, 2]$ represents the median pre-learning response time in seconds; technically, it is the vertical shift of all response times. Naturally, it should not be negative because response times cannot be negative in this experiment. Furthermore, the maximum value is 2 seconds because each letter was only visible in the window for 2 seconds before the next letter appeared and the response time was cut off.
+* $E \in [0, \infty)$ is the overall scale of the exponential used to model the period of adaptation to the task. It must be non-negative because it must be monotonically decreasing as the subject gets used to the experiment.
+* $A \in [0, \infty)$ is the adaptation rate to the task. It again must be non-negative so that the exponential term decays instead of grows.
+* $S \in (-\infty, \infty)$ is the shift in response time of the learned letters \emph{prior to learning} relative to that of the non-learned letters. We expect this value to be close to zero since essentially controls for any mechanical differences in typing the different letters on the keyboard.
+* $\sigma^2 \in [0, \infty)$ drives the variance in the response times more than $\mu'$, so we treat it as a proxy for the variance; naturally, it should be non-negative.
 
 The prior distributions for the model parameters are:
 
-\begin{equation} \label{eqn:prior}
+\begin{equation} \label{eqn:model-no-prior}
   \begin{aligned}
     V &\sim \text{Gamma}(2.5, 2.5),\\[0.25ex]
     E &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
     A &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
-    P &\sim \text{Beta}(0.01, 0.01),\\[0.25ex]
-    D &\sim \text{Beta}(2.5, 2.5),\\[0.25ex]
-    L &\sim \text{Gamma}(4, 10),\\[0.25ex]
-    H &\sim \text{Cauchy}(\tfrac{n}{2}, 25),\\[0.25ex]
+    S &\sim \text{Normal}(0, 0.5),\\[0.25ex]
     \sigma &\sim \text{Gamma}(2, 10).
   \end{aligned}
+  \nonumber
 \end{equation}
 
+You might notice that the Gamma prior on $V$ technically has support for any non-negative real number, yet the response times themselves are bounded above by 2 seconds. There aren't any useful priors that are defined on only $[0, 2]$, but we could use a prior bounded on $[0, 1]$ and scale it to support $[0, 2]$ (such as a Beta distribution). I opted for the Gamma prior so that the model would be more easily generalizable for other data, but the Stan model defines an upper bound of 2 seconds when fitting $V$ so any fitted value of $V$ can be at most $2$.
+
+We provide a fairly sharp Normal prior on $S$ so that it remains close to zero as we do not expect any major difference in the mechanical differences in typing on the keyboard. The other priors are weakly informative distributions based on their domains; since the priors are relatively weak, we allow for the data to drive the fitted parameter values instead of our prior beliefs. The priors on $E$, $A$, and $\sigma$ are simple Gamma distributions with ample room for exploring the possible parameter values.
 
 
 
-## Asymmetric Logistic Learning {#models-asym}
 
-This model allows the drop in the median response time to be not only gradual but also asymmetric. This might be too many parameters to be useful
+## Step Learning Model {#def-step}
+
+```{r load-step-learn, eval=TRUE}
+load(paste0("stan-models/compiled/", os, "/step_learning_model.Rds"))
+```
+
+This model builds on the previous decaying exponential by including a sudden drop in the median response time to allow for fitting the evidence of learning. We add two parameters: $D$, the scale of the drop in median response time, and $H$ the onset of learning. The sudden drop in response time takes the shape of a step function, which assumes that the learning occurs across the timespan of a single trial in the experiment. Whereas this model fits well to simple learning tasks where the learning occurs nearly instantaneously, it is rather inflexible for a more general learning process. The model for a single subject is:
+
+\begin{equation} \label{eqn:models-step}
+  \begin{aligned}
+    \hat{\mu_n} &= \log\big( V + E \cdot \exp(-A \cdot t) \big),\\[2ex]
+    \hat{\mu_\ell} &= \log\big( (V + S) + E \cdot \exp(-A \cdot t) - ({\bf 1}_{t \geq H} \cdot D) \big),\\[2ex]
+  \end{aligned}
+  \tag{M.2}
+\end{equation}
+
+where $t$ is the trial iteration, $t \in \{1, \dots, T\}$, $T$ is the number of trials performed in the experiment by that individual, and ${\bf 1}_{t \geq H}$ is the indicator function that resolves to $1$ if $t \geq H$ and $0$ if $t < H$. In the coding of the model, care is taken to isolate the parameters $S$ and $D$ so that they do not get confounded; more precisely, the parameter $D$ is only applicable after $H$ trials have been completed by the participant. All of the parameters are explained in detail in the following list:
+
+* $V \in [0, 2]$ represents the median pre-learning response time in seconds; technically, it is the vertical shift of all response times. Naturally, it should not be negative because response times cannot be negative in this experiment. Furthermore, the maximum value is 2 seconds because each letter was only visible in the window for 2 seconds before the next letter appeared and the response time was cut off.
+* $E \in [0, \infty)$ is the overall scale of the exponential used to model the period of adaptation to the task. It must be non-negative because it must be monotonically decreasing as the subject gets used to the experiment.
+* $A \in [0, \infty)$ is the adaptation rate to the task. It again must be non-negative so that the exponential term decays instead of grows.
+* $S \in (-\infty, \infty)$ is the shift in response time of the learned letters \emph{prior to learning} relative to that of the non-learned letters. We expect this value to be close to zero since essentially controls for any mechanical differences in typing the different letters on the keyboard.
+* $D \in [0, 1]$ is the scale of the learning "drop." It is the scaled difference between the median pre-learning response time and the median post-learning response time for the learned letter in the pattern. A value near $0$ indicates a no decrease in response time (a post-learning response time equal to that of the pre-learning); a value near $1$ indicates a full decrease in response time (a post-learning response time of $0$ seconds).
+* $H \in [0, T]$, is the onset of learning, where $T$ is the number of trials performed in the experiment by the individual. $H$ represents how many trials it takes for the subject to learn the existence of the pattern.
+* $\sigma^2 \in [0, \infty)$ drives the variance in the response times more than $\mu'$, so we treat it as a proxy for the variance; naturally, it should be non-negative.
+
+The prior distributions for the model parameters are:
+
+\begin{equation} \label{eqn:model-step-prior}
+  \begin{aligned}
+    V &\sim \text{Gamma}(2.5, 2.5),\\[0.25ex]
+    E &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    A &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    S &\sim \text{Normal}(0, 0.5),\\[0.25ex]
+    D &\sim \text{Beta}(2.5, 2.5),\\[0.25ex]
+    H &\sim \text{Cauchy}(\tfrac{T}{2}, 25),\\[0.25ex]
+    \sigma &\sim \text{Gamma}(2, 10).
+  \end{aligned}
+  \nonumber
+\end{equation}
+
+In addition to the priors already covered in the previous section, we place a slightly informative Beta prior on $D$ in order to dissuade the model from fitting values too close to either $0$ or $1$. Whereas values close to $1$ are extremely unlikely, values close to $0$ can confound a consistent drop in the median response time with random noise, thus not identifying the underlying cognitive process.
+
+Moreover, the prior on $H$ is also slightly informative as we discourage the model from fitting the onset of learning at the very beginning or the very end of the experiment. In cases such as these, we cannot distinguish legitimate evidence of learning behavior from simple adaptation to the task or random noise at the end of the experiment. While the Cauchy prior does technically support any real number (including negative numbers and zero), the Stan model bounds $H$ below by $0$ and above by $T$, the number of trials completed by the individual (so the upper bound is different for each participant). Ultimately, this Cauchy prior suggests that the learning occurs somewhere around halfway through the experiment, but it doesn't prevent the model from fitting fast or slow learners.
+
+
+
+
+## Symmetric Logistic Learning Model {#def-sym}
+
+```{r load-sym-log-learn, eval=TRUE}
+load(paste0("stan-models/compiled/", os, "/symmetric_logistic_learning_model.Rds"))
+```
+
+This model adds another layer of complexity to the Step Learning Model because it allows the drop in the median response time to be gradual by including the additional parameter $L$, the learning rate. This model can approach a step function by allowing the learning rate to increase to $\infty$ (i.e., assuming that the learning happens instantaneously), yet it is still able to characterize gradual learning by fitting the learning rate to a value less than $1$. Again, the parameter $L$ does not affect the model until $H$ trials have been completed by the participant. The model for a single subject is:
+
+\begin{equation} \label{eqn:models-sym}
+  \begin{aligned}
+    \hat{\mu_n} &= \log\big( V + E \cdot \exp(-A \cdot t) \big),\\[2ex]
+    \hat{\mu_\ell} &= \log\bigg( (V + S) + E \cdot \exp(-A \cdot t) - \cdot \Big( 1 - \frac{D}{1+\exp(-L \cdot (t-H))} \Big) \bigg),\\[2ex]
+  \end{aligned}
+  \tag{M.3}
+\end{equation}
+
+where $t$ is the trial iteration, $t \in \{1, \dots, T\}$, and $T$ is the number of trials performed in the experiment by that individual. All of the parameters are explained in detail in the following list:
+
+* $V \in [0, 2]$ represents the median pre-learning response time in seconds; technically, it is the vertical shift of all response times. Naturally, it should not be negative because response times cannot be negative in this experiment. Furthermore, the maximum value is 2 seconds because each letter was only visible in the window for 2 seconds before the next letter appeared and the response time was cut off.
+* $E \in [0, \infty)$ is the overall scale of the exponential used to model the period of adaptation to the task. It must be non-negative because it must be monotonically decreasing as the subject gets used to the experiment.
+* $A \in [0, \infty)$ is the adaptation rate to the task. It again must be non-negative so that the exponential term decays instead of grows.
+* $S \in (-\infty, \infty)$ is the shift in response time of the learned letters \emph{prior to learning} relative to that of the non-learned letters. We expect this value to be close to zero since essentially controls for any mechanical differences in typing the different letters on the keyboard.
+* $D \in [0, 1]$ is the scale of the learning "drop." It is the scaled difference between the median pre-learning response time and the median post-learning response time for the learned letter in the pattern. A value near $0$ indicates a no decrease in response time (a post-learning response time equal to that of the pre-learning); a value near $1$ indicates a full decrease in response time (a post-learning response time of $0$ seconds).
+* $L \in [0, \infty)$ is the learning rate of the subject. A negative learning rate would cause the logistic part of the expression to increase rather than decrease. A learning rate approaching $\infty$ approximates a step function (i.e., learning occurs instantaneously).
+* $H \in [0, T]$, is the onset of learning, where $T$ is the number of trials performed in the experiment by the individual. $H$ represents how many trials it takes for the subject to learn the existence of the pattern.
+* $\sigma^2 \in [0, \infty)$ drives the variance in the response times more than $\mu'$, so we treat it as a proxy for the variance; naturally, it should be non-negative.
+
+The prior distributions for the model parameters are:
+
+\begin{equation} \label{eqn:model-sym-prior}
+  \begin{aligned}
+    V &\sim \text{Gamma}(2.5, 2.5),\\[0.25ex]
+    E &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    A &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    S &\sim \text{Normal}(0, 0.5),\\[0.25ex]
+    D &\sim \text{Beta}(2.5, 2.5),\\[0.25ex]
+    L &\sim \text{Gamma}(1.5, 0.25),\\[0.25ex]
+    H &\sim \text{Cauchy}(\tfrac{T}{2}, 25),\\[0.25ex]
+    \sigma &\sim \text{Gamma}(2, 10).
+  \end{aligned}
+  \nonumber
+\end{equation}
+
+The prior distribution that we place on $L$ is weakly informative, and it allows for fitting relatively large values of $L$ (e.g., $L > 5$) that cause the model to closely mimic a step function. This prior also allows the model to fit a smaller value for $L$, characterizing a more gradual learning process.
+
+
+
+
+## Asymmetric Logistic Learning Model {#def-asym}
+
+```{r load-asym-log-learn, eval=TRUE}
+load(paste0("stan-models/compiled/", os, "/asymmetric_logistic_learning_model.Rds"))
+```
+
+The final model is very similar to the previous Symmetric Logistic Learning Model, but it uses the generalized form of the logistic function to model the shape of the decrease in median response time. By adding three additional parameters ($C$, $Q$, and $\nu$), this model allows the drop in the median response time to be not only gradual but also asymmetric. Again, these new parameters do not affect the model until $H$ trials have been completed by the participant. The model for a single subject is:
+
+\begin{equation} \label{eqn:models-asym}
+  \begin{aligned}
+    \hat{\mu_n} &= \log\big( V + E \cdot \exp(-A \cdot t) \big),\\[2ex]
+    \hat{\mu_\ell} &= \log\bigg( (V + S) + E \cdot \exp(-A \cdot t) - \cdot \Big( 1 - \frac{D}{1+\exp(-L \cdot (t-H))} \Big) \bigg),\\[2ex]
+  \end{aligned}
+  \tag{M.3}
+\end{equation}
+
+where $t$ is the trial iteration, $t \in \{1, \dots, T\}$, and $T$ is the number of trials performed in the experiment by that individual. All of the parameters are explained in detail in the following list:
+
+* $V \in [0, 2]$ represents the median pre-learning response time in seconds; technically, it is the vertical shift of all response times. Naturally, it should not be negative because response times cannot be negative in this experiment. Furthermore, the maximum value is 2 seconds because each letter was only visible in the window for 2 seconds before the next letter appeared and the response time was cut off.
+* $E \in [0, \infty)$ is the overall scale of the exponential used to model the period of adaptation to the task. It must be non-negative because it must be monotonically decreasing as the subject gets used to the experiment.
+* $A \in [0, \infty)$ is the adaptation rate to the task. It again must be non-negative so that the exponential term decays instead of grows.
+* $S \in (-\infty, \infty)$ is the shift in response time of the learned letters \emph{prior to learning} relative to that of the non-learned letters. We expect this value to be close to zero since essentially controls for any mechanical differences in typing the different letters on the keyboard.
+* $D \in [0, 1]$ is the scale of the consistent decrease in median response time upon learning the existence of the pattern. It is the scaled difference between the median pre-learning response time and the median post-learning response time for the learned letter in the pattern. A value near $0$ indicates a no decrease in response time (a post-learning response time equal to that of the pre-learning); a value near $1$ indicates a full decrease in response time (a post-learning response time of $0$ seconds).
+* $L \in [0, \infty)$ is the learning rate of the subject. A negative learning rate would cause the logistic part of the expression to increase rather than decrease. A learning rate approaching $\infty$ approximates a step function (i.e., learning occurs instantaneously).
+* $H \in [0, T]$, is the onset of learning, where $T$ is the number of trials performed in the experiment by the individual. $H$ represents how many trials it takes for the subject to learn the existence of the pattern.
+* $C \in [0, \infty)$ inversely affects the scale of the consistent decrease in median response time upon learning the existence of the pattern.
+* $Q \in [0, \infty)$ affects the onset of learning.
+* $\nu \in [0, \infty)$ affects near which asymptote the maximum learning occurs (i.e., if learning occurs faster earlier or later in the learning process); this affect is only visible if the learning rate, $L$, is small. In addition, it also affects the scale of the consistent decrease in median response time upon learning the existence of the pattern.
+* $\sigma^2 \in [0, \infty)$ drives the variance in the response times more than $\mu'$, so we treat it as a proxy for the variance; naturally, it should be non-negative.
+
+The prior distributions for the model parameters are:
+
+\begin{equation} \label{eqn:model-asym-prior}
+  \begin{aligned}
+    V &\sim \text{Gamma}(2.5, 2.5),\\[0.25ex]
+    E &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    A &\sim \text{Gamma}(2.5, 10),\\[0.25ex]
+    S &\sim \text{Normal}(0, 0.5),\\[0.25ex]
+    D &\sim \text{Beta}(2.5, 2.5),\\[0.25ex]
+    L &\sim \text{Gamma}(1.5, 0.25),\\[0.25ex]
+    H &\sim \text{Cauchy}(\tfrac{T}{2}, 25),\\[0.25ex]
+    C &\sim \text{Log-Normal}(1, 1),\\[0.25ex]
+    Q &\sim \text{Log-Normal}(1, 1),\\[0.25ex]
+    \nu &\sim \text{Log-Normal}(1, 1),\\[0.25ex]
+    \sigma &\sim \text{Gamma}(2, 10).
+  \end{aligned}
+  \nonumber
+\end{equation}
+
+All three of the prior distributions that we place on the newly added parameters ($C$, $Q$, and $\nu$) are slightly informative Log-Normal distributions centered at $1$. We chose the Log-Normal distribution because it only has support for non-negative real numbers, precisely the domain of the three newly added parameters. Moreover, these distributions are centered on $1$ but still allow the model to fit more extreme values. Note that if each of these parameters is $1$ ($C = Q = \nu = 1$), then we return to the simpler symmetric logistic learning model in the previous subsection.
+</div>
+
+
+
+
+
+# Model Recovery {#rec}
+
+This section will contain some basic model recovery experiments in order to determine each model's flexibility when fitting data that exhibit distinct patterns. In each of the following subsections, we will generate response time data to mimic a specific behavioral pattern. Then we will fit this generated data to each of the models from the previous section in order to demonstrate each model's ability to capture commonly observed behaviors. First we define functions to generate the response time data. We will generate data that simulates the response times for both the first letter in the pattern and the third letter in the pattern; if there is evidence of learning the pattern, we expect to see a decrease in the median response time for the third letter and not for the first letter. Our simulated data will be taken from a Log-Normal distribution whose median follows the log of the logistic function. This is basically the model from the Symmetric Logistic Learning section.
+
+```{r exp-log-funcs, eval=TRUE}
+exp_log <- function(trial, V, E, A, D, L, H) {
+  return( (V + E*exp(-A*trial)) * (1 - D/(1 + exp(-L*(trial-H)))) )
+}
+sim_exp_log <- function(trial, V, E, A, D, L, H, var,
+                        rand = FALSE, bored = FALSE) {
+  sim <- rlnorm(length(trial),
+                log(exp_log(trial = trial, E = E, A = A, V = V,
+                            D = D, L = L, H = H)),
+                log(var))
+
+  if (bored) {
+    sim <- sim + 1e-5*E*exp(A*(trial-H))
+  }
+
+  if (rand) {
+  rand_idx <- sample((H/2):length(sim), H/4)
+  sim[rand_idx] <- rlnorm(length(rand_idx),
+                log(exp_log(trial = rand_idx, E = E, A = A, V = V,
+                            D = 0, L = L, H = H)),
+                log(var))
+  }
+
+  return(sim)
+}
+```
+
+<div class="indent2">
+## No Evidence of Learning {#rec-nolearn}
+
+7 194
+
+First, we will generate response time data to simulate a participant that exhibits no evidence of learning the lexicographical pattern in the sequence of letters. This data will contain the adaptation to the experimental task, as shown by a decrease in response time across the first several trials of the experiment. Following that, however, will be no further changes to the median response time.
+
+<div class="indent3">
+### No Learning Model {#rec-nolearn-no}
+### Step Learning Model {#rec-nolearn-step}
+### Symmetric Logistic Learning Model {#rec-nolearn-sym}
+### Asymmetric Logistic Learning Model {#rec-nolearn-asym}
+</div>
+
+
+
+
+## Strong Evidence of Learning {#rec-learn}
+78 178
+Second, we will generate response time data to simulate a participant that exhibits strong evidence of learning the lexicographical pattern in the sequence of letters. This data will not only contain the adaptation to the experimental task, but it will also contain a significant decrease in the median response time of the learned letter halfway through the experiment. To best mimic the actual data, we will use a very sharp learning curve
+
+<div class="indent3">
+### No Learning Model {#rec-learn-no}
+### Step Learning Model {#rec-learn-step}
+### Symmetric Logistic Learning Model {#rec-learn-sym}
+### Asymmetric Logistic Learning Model {#rec-learn-asym}
+</div>
+
+
+
+
+## Consistent but Small Decrease in Response Times {#rec-small}
+139 129
+<div class="indent3">
+### No Learning Model {#rec-small-no}
+### Step Learning Model {#rec-small-step}
+### Symmetric Logistic Learning Model {#rec-small-sym}
+### Asymmetric Logistic Learning Model {#rec-small-asym}
+</div>
+
+
+
+
+## Sporadic Return to Baseline Response Time {#rec-ret}
+200 8 212
+<div class="indent3">
+### No Learning Model {#rec-ret-no}
+### Step Learning Model {#rec-ret-step}
+### Symmetric Logistic Learning Model {#rec-ret-sym}
+### Asymmetric Logistic Learning Model {#rec-ret-asym}
+</div>
+
+
+
+
+## Increased Response Times at the End of the Experiment {#rec-inc}
+85 61 16
+<div class="indent3">
+### No Learning Model {#rec-inc-no}
+### Step Learning Model {#rec-inc-step}
+### Symmetric Logistic Learning Model {#rec-inc-sym}
+### Asymmetric Logistic Learning Model {#rec-inc-asym}
+</div>
+</div>
+
+both sporadic return and boredom
+86
+
+boredom and sporadic return at the end (perhaps because of boredom) (with learning)
+196
+
+
+
+
+# Formal Model Comparison (just a sample for now) {#comp}
+
+<div class="indent2">
+## Posterior Predictive Fits {#comp-ppf}
+
+## Bayes Factor {#comp-bayes}
+
+## Loo {#comp-loo}
+
+## Stacking Weights {#comp-weights}
+</div>
 
 
 
@@ -302,7 +608,7 @@ plot_sim_fit_pars <- function(fits, K, V, E, A, P, D, L, H) {
     df$id <- seq_len(K)
     df$dumm = c(1, rep(2, K-1))
     par_name <- substring(rownames(df)[1], 1, 1)
-    
+
     print(ggplot(df) +
       geom_pointrange(alpha = 0.6, shape = 16, color = "#5fc6fa",
                       aes(x = id, y = mean, ymin = qlow, ymax = qupp,
@@ -319,7 +625,7 @@ plot_sim_fit_pars <- function(fits, K, V, E, A, P, D, L, H) {
                                                      lty = c(0, 0),
                                                      color = c("#04547c",
                                                                "#5fc6fa")))) +
-      
+
       scale_x_discrete(limits = as.character(seq_len(K))) +
       labs(title = paste0("Simulated Parameter Estimates for ", par_name),
            x = "ID of Individual", y = "Estimated Parameter Value",
@@ -368,7 +674,7 @@ plot_sim_fits <- function(fits, K, NTI,
     Hi <- fits[i+8*K]
     sigma_2i <- fits[i+7*K]
     sn <- seq_len(n)
-    
+
     df <- data.frame(x = rep(sn, 2),
                      data = c(Y0[(st+1):(st+n)], Y1[(st+1):(st+n)]),
                      truth = c(exp_log(sn, V = V[i], E = E[i], A = A[i],
@@ -384,13 +690,13 @@ plot_sim_fits <- function(fits, K, NTI,
     df$fit_min <- df$fit - df$fit*sqrt(sigma_2i*(sigma_2i - 1))
     df$fit_max <- df$fit + df$fit*sqrt(sigma_2i*(sigma_2i - 1))
     df$dumm <- c(rep(1, n), rep(2, n))
-    
+
     # factor levels key (since R makes it alphabetical)
       # 1: Non-Learned Data/Truth
       # 2: Learned Data/Truth
       # 3: Non-Learned Fit
       # 4: Learned Fit
-    
+
     print(ggplot(df) +
       geom_ribbon(linetype="blank", alpha=0.25,
                   aes(x = x, ymin = fit_min, ymax = fit_max,
@@ -446,11 +752,11 @@ plot_sim_fits <- function(fits, K, NTI,
             legend.direction = "vertical",
             legend.background = element_rect(fill = "transparent"))
     )
-    
+
     if (!is.null(savepath)) {
       ggsave(paste0(savepath, "sim_fit_", i, ".png"))
     }
-    
+
     st = st + n
   }
 }
@@ -548,7 +854,7 @@ plot_real_fits <- function(fits, K, NTI, Y0 = NA, Y1 = NA, savepath = NULL) {
     Hi <- fits[i+8*K]
     sigma_2i <- fits[i+7*K]
     sn <- seq_len(n)
-    
+
     df <- data.frame(x = rep(sn, 2),
                      data = c(Y0[(st+1):(st+n)], Y1[(st+1):(st+n)]),
                      fit = c(exp_log(sn, V = Vi, E = Ei, A = Ai,
@@ -559,13 +865,13 @@ plot_real_fits <- function(fits, K, NTI, Y0 = NA, Y1 = NA, savepath = NULL) {
                      fit_label = c(rep(3,n), rep(4,n)))
     df$fit_min <- df$fit - df$fit*sqrt(sigma_2i*(sigma_2i - 1))
     df$fit_max <- df$fit + df$fit*sqrt(sigma_2i*(sigma_2i - 1))
-    
+
     # factor levels key (since R makes it alphabetical)
       # 1: Non-Learned Data/Truth
       # 2: Learned Data/Truth
       # 3: Non-Learned Fit
       # 4: Learned Fit
-    
+
     print(ggplot(df) +
       geom_ribbon(linetype="blank", alpha=0.25,
                   aes(x = x, ymin = fit_min, ymax = fit_max,
@@ -608,11 +914,11 @@ plot_real_fits <- function(fits, K, NTI, Y0 = NA, Y1 = NA, savepath = NULL) {
             legend.direction = "vertical",
             legend.background = element_rect(fill = "transparent"))
     )
-    
+
     if (!is.null(savepath)) {
       ggsave(paste0(savepath, "real_fit_", i, ".png"))
     }
-    
+
     st = st + n
   }
 }

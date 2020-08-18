@@ -1,5 +1,5 @@
-// early exponential adaptation with no learning curve
-  // there is no learning curve
+// early exponential adaptation with logistic learning curve
+  // learning curve is a symmetric logistic function
   // response times are lognormally distributed
   // fit is_pred=0 and is_pred=1 data simultaneously
 
@@ -30,15 +30,27 @@ parameters { // define parameters (and their bounds) used in the model
 
   vector[k] S; // shift in median learned response time relative to non-learned
 
-  vector<lower=0>[k] sigma2_n; // main component of variance in non-learned response times
-  vector<lower=0>[k] sigma2_l; // main component of variance in learned response times
+  vector<lower=0, upper=1>[k] D;  // scale of learning "drop"
+  vector<lower=0>[k] L;  // learning rate
+  vector<lower=0, upper=1>[k] H_raw;  // horizontal shift in onset of learning (raw)
+
+  vector<lower=0>[k] sigma2_nV;
+  vector<lower=0>[k] sigma2_nE;
+  vector<lower=0>[k] sigma2_nA;
+  vector<lower=0>[k] sigma2_lV;
+  vector<lower=0>[k] sigma2_lE;
+  vector<lower=0>[k] sigma2_lA;
+}
+
+transformed parameters { // manipulations of the parameters (really, just their bounds)
+  vector[k] H = H_raw .* upperH;
 }
 
 model {
   real mu_n;
   real mu_l;
-  real sig_n;
-  real sig_l;
+  real sigma_n;
+  real sigma_l;
   int st = 0;
 
   // Prior distributions on parameters
@@ -46,27 +58,33 @@ model {
   E ~ gamma(2.5, 10);
   A ~ gamma(2.5, 10);
   S ~ normal(0, 0.5);
+  D ~ beta(2.5, 2.5);
+  L ~ gamma(1.5, 0.25);
+  H ~ cauchy(upperH/2, 25);
 
-  sigma2_n ~ gamma(2, 10);
-  sigma2_l ~ gamma(2, 10);
+  sigma2_nV ~ gamma(10, 10);
+  sigma2_nE ~ gamma(2, 10);
+  sigma2_nA ~ gamma(1, 10);
+  sigma2_lV ~ gamma(10, 10);
+  sigma2_lE ~ gamma(2, 10);
+  sigma2_lA ~ gamma(1, 10);
 
   // Loop through each individual
   for (ind in 1:k) {
-    sig_n = log( sigma2_n[ind] );
-    sig_l = log( sigma2_l[ind] );
-
     // Likelihood distribution for model
-    for (trial in 1:nk[ind]) {
+    for (trial in 1:nk[ind]) { // cannot vectorize because cannot divide by vector
       // We log mu so that the paramters directly determine the median so it's
       // easier to interpret; thus we use mu -> log(mu) so that
       // median(lognorm(z | log(mu), sigma)) = exp(log(mu)) = mu
-      mu_n = log( V[ind] + E[ind]*exp(-A[ind]*trial) );
-      mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind] );
+      mu_n = log(V[ind] + E[ind]*exp(-A[ind]*trial));
+      mu_l = log(V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind]) +
+             log1m(D[ind]/( 1 + exp(-L[ind]*(trial-H[ind]))));
+      sigma_n = log(sigma2_nV[ind] + sigma2_nE[ind]*exp(-sigma2_nA[ind]*trial));
+      sigma_l = log(sigma2_lV[ind] + sigma2_lE[ind]*exp(-sigma2_lA[ind]*trial));
 
-      target += mylognormal_lpdf(yn[st+trial] | mu_n, sig_n);
-      target += mylognormal_lpdf(yl[st+trial] | mu_l, sig_l);
+      target += mylognormal_lpdf(yn[st+trial] | mu_n, sigma_n);
+      target += mylognormal_lpdf(yl[st+trial] | mu_l, sigma_l);
     }
-
     st += nk[ind];
   }
 }
@@ -74,8 +92,8 @@ model {
 generated quantities {
   real mu_n;
   real mu_l;
-  real sig_n;
-  real sig_l;
+  real sigma_n;
+  real sigma_l;
   real ynpred[total_length];
   real ylpred[total_length];
   real log_lik[total_length];
@@ -83,18 +101,17 @@ generated quantities {
 
   // Loop through each individual
   for (ind in 1:k) {
-    sig_n = log( sigma2_n[ind] );
-    sig_l = log( sigma2_l[ind] );
-
     for (trial in 1:nk[ind]) {
       mu_n = log( V[ind] + E[ind]*exp(-A[ind]*trial) );
-      mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind] );
+      mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind]) +
+             log1m(D[ind]/( 1 + exp(-L[ind]*(trial-H[ind]))) );
+      sigma_n = log(sigma2_nV[ind] + sigma2_nE[ind]*exp(-sigma2_nA[ind]*trial));
+      sigma_l = log(sigma2_lV[ind] + sigma2_lE[ind]*exp(-sigma2_lA[ind]*trial));
 
-      ynpred[st+trial] = lognormal_rng(mu_n, sig_n);
-      ylpred[st+trial] = lognormal_rng(mu_l, sig_l);
-      log_lik[st+trial] = mylognormal_lpdf(yl[st+trial] | mu_l, sig_l);
+      ynpred[st+trial] = lognormal_rng(mu_n, sigma_n);
+      ylpred[st+trial] = lognormal_rng(mu_l, sigma_l);
+      log_lik[st+trial] = mylognormal_lpdf(yl[st+trial] | mu_l, sigma_l);
     }
-
     st += nk[ind];
   }
 }
