@@ -79,4 +79,10 @@ plot(x, y_sl, type = "l")
 x <- seq(-3, 3, by = 0.01)
 plot(x, dnorm(x, 0, .5), type = "l", col = "red")
   lines(x, dnorm(x, 0, 1), type = "l", col = "blue")
-       
+
+
+
+
+
+x <- seq(0, 3, by = 0.01)
+plot(x, dgamma(x, 3, 2), type = "l")

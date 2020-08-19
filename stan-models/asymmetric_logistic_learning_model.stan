@@ -49,8 +49,6 @@ transformed parameters { // manipulations of the parameters (really, just their 
 model {
   real mu_n;
   real mu_l;
-  real sig_n;
-  real sig_l;
   int st = 0;
 
   // Prior distributions on parameters
@@ -59,20 +57,17 @@ model {
   A ~ gamma(2.5, 10);
   S ~ normal(0, 0.5);
   D ~ beta(2.5, 2.5);
-  // L ~ gamma(1.5, 0.25);
+  L ~ gamma(1.5, 0.25);
   H_raw ~ beta(1.5, 1.5);
   NU ~ gamma(10, 10);
-  // C ~ gamma(10, 10);
-  // Q ~ gamma(10, 10);
+  C ~ gamma(10, 10);
+  Q ~ gamma(10, 10);
 
-  sigma2_n ~ gamma(2, 10);
-  sigma2_l ~ gamma(2, 10);
+  sigma2_n ~ gamma(3, 2);
+  sigma2_l ~ gamma(3, 2);
 
   // Loop through each individual
   for (ind in 1:k) {
-    sig_n = log( sigma2_n[ind] );
-    sig_l = log( sigma2_l[ind] );
-
     // Likelihood distribution for model
     for (trial in 1:nk[ind]) {
       // We log mu so that the paramters directly determine the median so it's
@@ -82,44 +77,35 @@ model {
       mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind] ) +
              log1m (D[ind]/( pow(C[ind] + Q[ind]*exp(-L[ind]*(trial-H[ind])),
                                  1/NU[ind]) ) );
-      // mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind] ) +
-      //        log1m ( D[ind]/( pow(1 + exp(-(trial-H[ind])),
-      //                             1/NU[ind]) ) );
 
-      target += mylognormal_lpdf(yn[st+trial] | mu_n, sig_n);
-      target += mylognormal_lpdf(yl[st+trial] | mu_l, sig_l);
+      target += mylognormal_lpdf(yn[st+trial] | mu_n, log(sigma2_n[ind]) );
+      target += mylognormal_lpdf(yl[st+trial] | mu_l, log(sigma2_l[ind]) );
     }
-
     st += nk[ind];
   }
 }
 
-// generated quantities {
-//   real mu_n;
-//   real mu_l;
-//   real sig_n;
-//   real sig_l;
-//   real ynpred[total_length];
-//   real ylpred[total_length];
-//   real log_lik[total_length];
-//   int st = 0;
-//
-//   // Loop through each individual
-//   for (ind in 1:k) {
-//     sig_n = log( sigma2_n[ind] );
-//     sig_l = log( sigma2_l[ind] );
-//
-//     for (trial in 1:nk[ind]) {
-//       mu_n = log( V[ind] + E[ind]*exp(-A[ind]*trial) );
-//       mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind]) +
-//              log1m(D[ind]/( pow(C[ind] + Q[ind]*exp(-L[ind]*(trial-H[ind])),
-//                                 1/NU[ind]) ));
-//
-//       ynpred[st+trial] = lognormal_rng(mu_n, sig_n);
-//       ylpred[st+trial] = lognormal_rng(mu_l, sig_l);
-//       log_lik[st+trial] = mylognormal_lpdf(yl[st+trial] | mu_l, sig_l);
-//     }
-//
-//     st += nk[ind];
-//   }
-// }
+generated quantities {
+  real mu_n;
+  real mu_l;
+  real ynpred[total_length];
+  real ylpred[total_length];
+  real log_lik[total_length];
+  int st = 0;
+
+  // Loop through each individual
+  for (ind in 1:k) {
+    for (trial in 1:nk[ind]) {
+      mu_n = log( V[ind] + E[ind]*exp(-A[ind]*trial) );
+      mu_l = log( V[ind] + E[ind]*exp(-A[ind]*trial) + S[ind] ) +
+             log1m(D[ind]/( pow(C[ind] + Q[ind]*exp(-L[ind]*(trial-H[ind])),
+                                1/NU[ind]) ));
+
+      ynpred[st+trial] = lognormal_rng(mu_n, log(sigma2_n[ind]) );
+      ylpred[st+trial] = lognormal_rng(mu_l, log(sigma2_l[ind]) );
+      log_lik[st+trial] = mylognormal_lpdf(yl[st+trial] | mu_l,
+                                                          log(sigma2_l[ind]) );
+    }
+    st += nk[ind];
+  }
+}
