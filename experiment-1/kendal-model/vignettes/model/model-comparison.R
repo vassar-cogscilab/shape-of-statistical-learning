@@ -1,7 +1,9 @@
 library("rstan")
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
-Sys.setenv(LOCAL_CPPFLAGS = '-march=corei7 -mtune=corei7')
+# Sys.setenv(LOCAL_CPPFLAGS = '-march=corei7 -mtune=corei7')
+
+source("experiment-1/kendal-model/vignettes/model/model-comparison-helper-functions.R")
 
 
 
@@ -12,7 +14,7 @@ if (.Platform$OS.type == "windows") { os <- "windows" } else { os <- "unix" }
 
 # no learning
 no_learning_model_stanc <- stanc(
-  file = "stan-models/no_learning_model.stan",
+  file = "stan-models/individual/no_learning_model.stan",
   model_name = "no_learning_model")
 no_learning_model <- stan_model(
   stanc_ret = no_learning_model_stanc)
@@ -23,7 +25,7 @@ save(no_learning_model,
 
 # step learning
 step_learning_model_stanc <- stanc(
-  file = "stan-models/step_learning_model.stan",
+  file = "stan-models/individual/step_learning_model.stan",
   model_name = "step_learning_model")
 step_learning_model <- stan_model(
   stanc_ret = step_learning_model_stanc)
@@ -34,7 +36,7 @@ save(step_learning_model,
 
 # symmetric logistic learning
 symmetric_logistic_learning_model_stanc <- stanc(
-  file = "stan-models/symmetric_logistic_learning_model.stan",
+  file = "stan-models/individual/symmetric_logistic_learning_model.stan",
   model_name = "symmetric_logistic_learning_model")
 symmetric_logistic_learning_model <- stan_model(
   stanc_ret = symmetric_logistic_learning_model_stanc)
@@ -45,7 +47,7 @@ save(symmetric_logistic_learning_model,
 
 # asymmetric logistic learning
 asymmetric_logistic_learning_model_stanc <- stanc(
-  file = "stan-models/asymmetric_logistic_learning_model.stan",
+  file = "stan-models/individual/asymmetric_logistic_learning_model.stan",
   model_name = "asymmetric_logistic_learning_model")
 asymmetric_logistic_learning_model <- stan_model(
   stanc_ret = asymmetric_logistic_learning_model_stanc)
@@ -72,68 +74,52 @@ load(paste0("stan-models/compiled/", os,
 
 ########## Real-World Data Fits
 fit_path <- "experiment-1/kendal-model/vignettes/model/fits/"
-
 load(file = "experiment-1/kendal-model/exp1.Rds")
-sub_ids <- unique(exp1$subject_id)[c(78, 7, 10)] # 78, 7, 10
+library("tictoc")
 
-k <- length(sub_ids)
-nk <- vector()
-yn <- vector()
-yl <- vector()
-for(i in 1:k) {
-  tempn <- exp1[exp1[["subject_id"]] == sub_ids[i] &
-                exp1[["is_predictable"]] == 0, "rt"]/1000
-  templ <- exp1[exp1[["subject_id"]] == sub_ids[i] &
-                exp1[["is_predictable"]] == 1, "rt"]/1000
-  mi <- min(length(tempn), length(templ))
-  if (mi >= 50) {
-    nk <- c(nk, mi)
-    yn <- c(yn, tempn[seq_len(mi)])
-    yl <- c(yl, templ[seq_len(mi)])
-  }
-}
+yn <- exp1[exp1[["subject_id"]] == sub_ids[i] &
+           exp1[["is_predictable"]] == 0, "rt"]/1000
+yl <- exp1[exp1[["subject_id"]] == sub_ids[i] &
+           exp1[["is_predictable"]] == 1, "rt"]/1000
+# clean data
+nk <- min(length(yn), length(yl))
+yn <- yn[seq_len(nk)]
+yl <- yl[seq_len(nk)]
 
+sampling(no_learning_model,
+data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
+refresh = FALSE, chains = 1, iter = 500,
+control = list(adapt_delta = 0.9, max_treedepth = 10),
+init = list( list(
+  V = 1, E = 0.25, A = 0.25, S = 0 )) )
 
+sampling(step_learning_model,
+data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
+refresh = FALSE, chains = 1, iter = 500,
+control = list(adapt_delta = 0.9, max_treedepth = 10),
+init = list( list(
+  V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, H_raw = 0.5 )) )
 
-fit_no_learning <- sampling(no_learning_model,
-  data = list('k' = k, 'nk' = as.array(nk), 'total_length' = sum(nk),
-              'yn' = yn, 'yl' = yl),
-  refresh = FALSE, chains = 1, iter = 500, init = list(
-    list( V = rep(1, k), E = rep(0.25, k), A = rep(0.25, k), S = rep(0, k) )),
-  control = list(adapt_delta = 0.9, max_treedepth = 10))
-save(fit_no_learning, compress = "xz", compression_level = 9,
-  file = paste0(fit_path, "fit_no_learning.Rds"))
+sampling(symmetric_logistic_learning_model,
+data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
+refresh = FALSE, chains = 1, iter = 500,
+control = list(adapt_delta = 0.9, max_treedepth = 10),
+init = list( list(
+  V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5 )) )
 
-fit_step_learning <- sampling(step_learning_model,
-  data = list('k' = k, 'nk' = as.array(nk), 'total_length' = sum(nk),
-              'yn' = yn, 'yl' = yl),
-  refresh = FALSE, chains = 1, iter = 500, init = list(
-    list( V = rep(1, k), E = rep(0.25, k), A = rep(0.25, k), S = rep(0, k),
-          D = rep(0.5, k), H_raw = rep(0.5, k) )),
-  control = list(adapt_delta = 0.9, max_treedepth = 10))
-save(fit_step_learning, compress = "xz", compression_level = 9,
-  file = paste0(fit_path, "fit_step_learning.Rds"))
+sampling(asymmetric_logistic_learning_model,
+data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
+refresh = FALSE, chains = 1, iter = 500,
+control = list(adapt_delta = 0.9, max_treedepth = 10),
+init = list( list(
+  V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5,
+  NU = 1, C = 1, Q = 1 )) )
 
-fit_symmetric_logistic_learning <- sampling(symmetric_logistic_learning_model,
-  data = list('k' = k, 'nk' = as.array(nk), 'total_length' = sum(nk),
-              'yn' = yn, 'yl' = yl),
-  refresh = FALSE, chains = 1, iter = 500, init = list(
-    list( V = rep(1, k), E = rep(0.25, k), A = rep(0.25, k), S = rep(0, k),
-          D = rep(0.5, k), L = rep(6, k), H_raw = rep(0.5, k) )),
-  control = list(adapt_delta = 0.9, max_treedepth = 10))
-save(fit_symmetric_logistic_learning, compress = "xz", compression_level = 9,
-  file = paste0(fit_path, "fit_symmetric_logistic_learning.Rds"))
-
-fit_asymmetric_logistic_learning <- sampling(asymmetric_logistic_learning_model,
-  data = list('k' = k, 'nk' = as.array(nk), 'total_length' = sum(nk),
-              'yn' = yn, 'yl' = yl),
-  refresh = FALSE, chains = 1, iter = 500, init = list(
-    list( V = rep(1, k), E = rep(0.25, k), A = rep(0.25, k), S = rep(0, k),
-          D = rep(0.5, k), L = rep(6, k), H_raw = rep(0.5, k),
-          NU = rep(1, k), C = rep(1, k), Q = rep(1, k) )),
-  control = list(adapt_delta = 0.9, max_treedepth = 10))
-save(fit_asymmetric_logistic_learning, compress = "xz", compression_level = 9,
-  file = paste0(fit_path, "fit_asymmetric_logistic_learning.Rds"))
+tic()
+fit <- data_fit(exp1, sub_ids = c(74, 171, 143))
+toc()
+save(fit, compress = "xz", compression_level = 9,
+  file = paste0(fit_path, "fit.Rds"))
 
 
 
@@ -148,94 +134,7 @@ load(file = paste0(fit_path, "fit_asymmetric_logistic_learning.Rds"))
 
 
 ########## Visualize Model Fits
-library("ggplot2")
-plot_post_pred <- function(fit, nk, yn, yl,
-                           pred_names = c("ynpred", "ylpred"),
-                           plot_title = "Experimental Data Fit") {
-  ynpred <- rstan::extract(fit)[[pred_names[1]]]
-  ylpred <- rstan::extract(fit)[[pred_names[2]]]
 
-  k <- length(nk)
-  st <- 0
-  for (i in 1:k) {
-    n <- nk[i]
-    ynpredi <- ynpred[, (st+1):(st+nk[i])]
-    ylpredi <- ylpred[, (st+1):(st+nk[i])]
-    yni <- yn[(st+1):(st+nk[i])]
-    yli <- yl[(st+1):(st+nk[i])]
-    st = st + nk[i]
-
-    df <- data.frame(
-      x = rep(seq_len(n), 2),
-      y = c(yni, yli),
-      data_label = c(rep(1, n), rep(2, n)),
-      pred_label = c(rep(3, n), rep(4, n)),
-      y_means = c(apply(ynpredi, 2, mean), apply(ylpredi, 2, mean)),
-      y_sds = c(apply(ynpredi, 2, sd), apply(ylpredi, 2, sd))
-    )
-    df$y_hi <- df$y_means + df$y_sds
-    df$y_lo <- df$y_means - df$y_sds
-    df$dummy <- rep(5, 2*n)
-
-    # factor levels key (since R makes it alphabetical otherwise)
-      # 1: Non-Learned Data
-      # 2: Learned Data
-      # 3: Non-Learned Fit
-      # 4: Learned Fit
-
-    print(ggplot(df) +
-      geom_ribbon(linetype = "blank", alpha = 0.25, outline.type = NULL,
-        aes(x = x, ymin = y_lo, ymax = y_hi,
-            fill = factor(pred_label, levels = c(3, 4)))) +
-      geom_line(size = 1.25, alpha = 0.6,
-        aes(x = x, y = y_means,
-            color = factor(pred_label, levels = c(3, 4)))) +
-      geom_point(shape = 16, size = 1.8, alpha = 0.6,
-        aes(x = x, y = y,
-            fill = factor(data_label, levels = c(1, 2)),
-            color = factor(data_label, levels = c(1, 2)))) +
-      geom_point(alpha = 0, size = 1, shape = 21,
-        aes(x = x, y = y,
-            fill = factor(dummy, levels = c(5)))) +
-      scale_color_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f"),
-        guide = FALSE) +
-      scale_fill_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
-        labels = c("Non-Learned Data", "Learned Data",
-                   "Non-Learned Fit \u00B1 1 sd", "Learned Fit \u00B1 1 sd", ""),
-                   name = NULL) +
-      guides(fill = guide_legend(
-        override.aes = list(
-          size = c(2.5, 2.5, 6, 6, 8),
-          shape = c(16, 16, -0x2014L, -0x2014L, -0x2014L),
-          color = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
-          fill = c(NA, NA, "#80b3ff40", "#ff4f4f40", "#ffffff")))) +
-      labs(title = plot_title, subtitle = paste0("Subject ", i),
-           x = "Trial Number", y = "Response Time (sec)") +
-      theme_bw() +
-      theme(
-        panel.border = element_blank(),
-        plot.title = element_text(size = 20,
-          margin = margin(5, 0, 5, 0, "pt")),
-        plot.subtitle = element_text(size = 18,
-          margin = margin(5, 0, 20, 0, "pt")),
-        axis.text.x = element_text(size = 14),
-        axis.text.y = element_text(size = 14),
-        axis.title.x = element_text(size = 16,
-          margin = margin(10, 0, 0, 0, "pt")),
-        axis.title.y = element_text(size = 16,
-          margin = margin(0, 10, 0, 0, "pt")),
-        legend.position = c(1, 1.1),
-        legend.justification = c(1, 1),
-        legend.box = "horizontal",
-        legend.direction = "vertical",
-        legend.background = element_rect(fill = "transparent"),
-        legend.text = element_text(size = 12))
-    )
-  }
-}
-
-
-### Print Plots
 plot_post_pred(fit_no_learning, nk, yn, yl,
                plot_title = "No Learning Model Data Fit")
 plot_post_pred(fit_step_learning, nk, yn, yl,
@@ -243,6 +142,19 @@ plot_post_pred(fit_step_learning, nk, yn, yl,
 plot_post_pred(fit_symmetric_logistic_learning, nk, yn, yl,
                plot_title = "Symmetric Logistic Learning Model Data Fit")
 plot_post_pred(fit_asymmetric_logistic_learning, nk, yn, yl,
+               plot_title = "Asymmetric Logistic Learning Model Data Fit")
+
+plot_model_est(fit_no_learning, nk, yn, yl,
+               c("V", "E", "A", "S"),
+               plot_title = "No Learning Model Data Fit")
+plot_model_est(fit_step_learning, nk, yn, yl,
+               c("V", "E", "A", "S", "D", "H"),
+               plot_title = "Step Learning Model Data Fit")
+plot_model_est(fit_symmetric_logistic_learning, nk, yn, yl,
+               c("V", "E", "A", "S", "D", "L", "H"),
+               plot_title = "Symmetric Logistic Learning Model Data Fit")
+plot_model_est(fit_asymmetric_logistic_learning, nk, yn, yl,
+               c("V", "E", "A", "S", "D", "L", "H", "NU", "C", "Q"),
                plot_title = "Asymmetric Logistic Learning Model Data Fit")
 
 

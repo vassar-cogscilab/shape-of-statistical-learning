@@ -420,7 +420,7 @@ sim_exp_log <- function(trial, V, E, A, D, L, H, var,
 <div class="indent2">
 ## No Evidence of Learning {#rec-nolearn}
 
-7 194
+171 130
 
 First, we will generate response time data to simulate a participant that exhibits no evidence of learning the lexicographical pattern in the sequence of letters. This data will contain the adaptation to the experimental task, as shown by a decrease in response time across the first several trials of the experiment. Following that, however, will be no further changes to the median response time.
 
@@ -435,7 +435,7 @@ First, we will generate response time data to simulate a participant that exhibi
 
 
 ## Strong Evidence of Learning {#rec-learn}
-78 178
+74 204
 Second, we will generate response time data to simulate a participant that exhibits strong evidence of learning the lexicographical pattern in the sequence of letters. This data will not only contain the adaptation to the experimental task, but it will also contain a significant decrease in the median response time of the learned letter halfway through the experiment. To best mimic the actual data, we will use a very sharp learning curve
 
 <div class="indent3">
@@ -449,7 +449,7 @@ Second, we will generate response time data to simulate a participant that exhib
 
 
 ## Consistent but Small Decrease in Response Times {#rec-small}
-139 129
+142 (143?) 237
 <div class="indent3">
 ### No Learning Model {#rec-small-no}
 ### Step Learning Model {#rec-small-step}
@@ -461,7 +461,7 @@ Second, we will generate response time data to simulate a participant that exhib
 
 
 ## Sporadic Return to Baseline Response Time {#rec-ret}
-200 8 212
+28 152 235
 <div class="indent3">
 ### No Learning Model {#rec-ret-no}
 ### Step Learning Model {#rec-ret-step}
@@ -473,7 +473,7 @@ Second, we will generate response time data to simulate a participant that exhib
 
 
 ## Increased Response Times at the End of the Experiment {#rec-inc}
-85 61 16
+149 86 50
 <div class="indent3">
 ### No Learning Model {#rec-inc-no}
 ### Step Learning Model {#rec-inc-step}
@@ -483,10 +483,10 @@ Second, we will generate response time data to simulate a participant that exhib
 </div>
 
 both sporadic return and boredom
-86
+187
 
 boredom and sporadic return at the end (perhaps because of boredom) (with learning)
-196
+7
 
 
 
