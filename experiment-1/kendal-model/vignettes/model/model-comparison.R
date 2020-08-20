@@ -3,9 +3,6 @@ options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 # Sys.setenv(LOCAL_CPPFLAGS = '-march=corei7 -mtune=corei7')
 
-source("experiment-1/kendal-model/vignettes/model/model-comparison-helper-functions.R")
-
-
 
 
 
@@ -73,51 +70,15 @@ load(paste0("stan-models/compiled/", os,
 
 
 ########## Real-World Data Fits
-fit_path <- "experiment-1/kendal-model/vignettes/model/fits/"
-load(file = "experiment-1/kendal-model/exp1.Rds")
+source("experiment-1/kendal-model/vignettes/model/model-comparison-helper-functions.R")
 library("tictoc")
-
-yn <- exp1[exp1[["subject_id"]] == sub_ids[i] &
-           exp1[["is_predictable"]] == 0, "rt"]/1000
-yl <- exp1[exp1[["subject_id"]] == sub_ids[i] &
-           exp1[["is_predictable"]] == 1, "rt"]/1000
-# clean data
-nk <- min(length(yn), length(yl))
-yn <- yn[seq_len(nk)]
-yl <- yl[seq_len(nk)]
-
-sampling(no_learning_model,
-data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
-refresh = FALSE, chains = 1, iter = 500,
-control = list(adapt_delta = 0.9, max_treedepth = 10),
-init = list( list(
-  V = 1, E = 0.25, A = 0.25, S = 0 )) )
-
-sampling(step_learning_model,
-data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
-refresh = FALSE, chains = 1, iter = 500,
-control = list(adapt_delta = 0.9, max_treedepth = 10),
-init = list( list(
-  V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, H_raw = 0.5 )) )
-
-sampling(symmetric_logistic_learning_model,
-data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
-refresh = FALSE, chains = 1, iter = 500,
-control = list(adapt_delta = 0.9, max_treedepth = 10),
-init = list( list(
-  V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5 )) )
-
-sampling(asymmetric_logistic_learning_model,
-data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
-refresh = FALSE, chains = 1, iter = 500,
-control = list(adapt_delta = 0.9, max_treedepth = 10),
-init = list( list(
-  V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5,
-  NU = 1, C = 1, Q = 1 )) )
+load(file = "experiment-1/kendal-model/exp1.Rds")
 
 tic()
 fit <- data_fit(exp1, sub_ids = c(74, 171, 143))
 toc()
+
+fit_path <- "experiment-1/kendal-model/vignettes/model/fits/"
 save(fit, compress = "xz", compression_level = 9,
   file = paste0(fit_path, "fit.Rds"))
 
