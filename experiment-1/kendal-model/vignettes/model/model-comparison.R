@@ -75,7 +75,7 @@ library("tictoc")
 load(file = "experiment-1/kendal-model/exp1.Rds")
 
 tic()
-fit <- data_fit(exp1, sub_ids = c(74, 171, 143))
+fit <- data_fit(exp1)
 toc()
 
 fit_path <- "experiment-1/kendal-model/vignettes/model/fits/"

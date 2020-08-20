@@ -20,7 +20,7 @@ data_fit <- function(data, sub_ids = NULL) {
     bad_idx <- which(yn < 0 | yn > 2 | yl < 0 | yl > 2)
     n_bad_idx <- length(bad_idx)
     if (n_bad_idx > 0) {
-      yn <- ys[-bad_idx]
+      yn <- yn[-bad_idx]
       yl <- yl[-bad_idx]
       nk <- nk - n_bad_idx
     }
