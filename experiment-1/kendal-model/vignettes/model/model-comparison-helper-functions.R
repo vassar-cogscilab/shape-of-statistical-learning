@@ -6,11 +6,11 @@ data_fit <- function(data, sub_ids = NULL) {
   k <- length(sub_ids)
   out <- list()
 
-  for (i in 1:k) {
+  for (i in sub_ids) {
     # read data
-    yn <- data[data[["subject_id"]] == sub_ids[i] &
+    yn <- data[data[["subject_id"]] == i &
                data[["is_predictable"]] == 0, "rt"]/1000
-    yl <- data[data[["subject_id"]] == sub_ids[i] &
+    yl <- data[data[["subject_id"]] == i &
                data[["is_predictable"]] == 1, "rt"]/1000
 
     # clean data
@@ -26,30 +26,30 @@ data_fit <- function(data, sub_ids = NULL) {
     }
 
     # run fits
-    out[[i]] <- list(
+    out[[as.character(i)]] <- list(
       "no_learning" =
-        sampling(no_learning_model,
+        rstan::sampling(no_learning_model,
         data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
         refresh = FALSE, chains = 1, iter = 500,
         control = list(adapt_delta = 0.9, max_treedepth = 10),
         init = list( list(
           V = 1, E = 0.25, A = 0.25, S = 0 )) ),
       "step_learning" =
-        sampling(step_learning_model,
+        rstan::sampling(step_learning_model,
         data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
         refresh = FALSE, chains = 1, iter = 500,
         control = list(adapt_delta = 0.9, max_treedepth = 10),
         init = list( list(
           V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, H_raw = 0.5 )) ),
       "symmetric_logistic_learning" =
-        sampling(symmetric_logistic_learning_model,
+        rstan::sampling(symmetric_logistic_learning_model,
         data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
         refresh = FALSE, chains = 1, iter = 500,
         control = list(adapt_delta = 0.9, max_treedepth = 10),
         init = list( list(
           V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5 )) ),
       "asymmetric_logistic_learning" =
-        sampling(asymmetric_logistic_learning_model,
+        rstan::sampling(asymmetric_logistic_learning_model,
         data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
         refresh = FALSE, chains = 1, iter = 500,
         control = list(adapt_delta = 0.9, max_treedepth = 10),
@@ -96,8 +96,169 @@ data_fit <- function(data, sub_ids = NULL) {
 # k <- length(good_ids)
 
 
+
+######################### Model Comparison #####################################
+library("loo")
+options(mc.cores = parallel::detectCores())
+loo_fit <- function(fit, sub_ids = NULL,
+                    models = c("no_learning", "step_learning",
+                               "symmetric_logistic_learning",
+                               "asymmetric_logistic_learning")) {
+  if (is.null(sub_ids)) {
+    sub_ids <- seq_len(length(fit))
+  }
+  n_sub_ids <- length(sub_ids)
+  n_models <- length(models)
+  n_row <- n_sub_ids*n_models
+
+  out <- data.frame(subject_id = rep(as.integer(sub_ids), each = n_models),
+                    model_label = character(n_row),
+                    elpd_diff = double(n_row),
+                    se_diff = double(n_row),
+                    elpd_loo = double(n_row),
+                    se_elpd_loo = double(n_row),
+                    p_loo = double(n_row),
+                    se_p_loo = double(n_row),
+                    looic = double(n_row),
+                    se_looic = double(n_row))
+  for (i in 1:n_sub_ids) {
+    # tmp <- fit[[as.character(sub_ids[i])]]
+    tmp <- fit[[sub_ids[i]]]
+    loos <- list()
+    for (m in 1:n_models) {
+      loos[[m]] <- loo::loo(tmp[[models[m]]])
+    }
+    idx <- 1:n_models + (i-1)*n_models
+    looc <- loo::loo_compare(loos)
+    out[idx, 2] <- rownames(looc)
+    out[idx, -c(1, 2)] <- looc
+  }
+  return(out)
+}
+
+
+
 ######################### Plotting #############################################
 library("ggplot2")
+
+plot_loo_fit <- function(loo_fit) {
+  sub_ids <- unique(loo_fit[["subject_id"]])
+  n_sub_ids <- length(sub_ids)
+  models <- c("no learning", "step learning",
+              "sym logi learning", "asym logi learning")
+  n_models <- length(models)
+  colors <- c("#b0e7ff", "#b0ffb7", "#ffc8b0", "#f6b0ff")
+
+  loo_fit[["elpd_per"]] <- loo_fit[["elpd_loo"]] /
+    rep(loo_fit[["elpd_loo"]][seq(1, by = n_models,
+                                  length.out = n_sub_ids)],
+        each = n_models)
+
+  loo_fit[["n_pars"]] <- integer(n_sub_ids*n_models)
+  loo_fit[["n_pars"]][loo_fit[["model_label"]] == "model1"] <- 6
+  loo_fit[["n_pars"]][loo_fit[["model_label"]] == "model2"] <- 8
+  loo_fit[["n_pars"]][loo_fit[["model_label"]] == "model3"] <- 9
+  loo_fit[["n_pars"]][loo_fit[["model_label"]] == "model4"] <- 12
+
+  print(ggplot(loo_fit) +
+    geom_point(size = 3, shape = 16, alpha = 0.5,
+               aes(x = subject_id, y = elpd_per, color = model_label)) +
+    scale_color_manual(values = colors, labels = models, name = NULL) +
+    guides(color = guide_legend(override.aes = list(size = rep(5, n_models)))) +
+    coord_cartesian(ylim = c(0, 1)) +
+    labs(title = "Loo Estimates for elpd_loo",
+         subtitle = paste("as a percent of the highest",
+                          "elpd_loo per individual", sep = "\n"),
+         x = "Subject ID Number", y = "Percent of Maximum elpd_loo") +
+    theme_bw() +
+    theme(
+      panel.border = element_blank(),
+      plot.title = element_text(size = 20,
+        margin = margin(5, 0, 5, 0, "pt")),
+      plot.subtitle = element_text(size = 16,
+        margin = margin(5, 0, 10, 0, "pt")),
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 16,
+        margin = margin(10, 0, 0, 0, "pt")),
+      axis.title.y = element_text(size = 16,
+        margin = margin(0, 10, 0, 0, "pt")),
+      legend.position = c(1, 1),
+      legend.justification = c(1, 0),
+      legend.box = "horizontal",
+      legend.direction = "vertical",
+      legend.background = element_rect(fill = "transparent"),
+      legend.text = element_text(size = 12))
+  )
+
+  print(ggplot(loo_fit) +
+    geom_pointrange(size = 1, shape = 16, alpha = 0.5,
+                    aes(x = subject_id, y = elpd_diff,
+                        ymin = elpd_diff - 5*se_diff,
+                        ymax = elpd_diff + 5*se_diff,
+                        color = model_label)) +
+    scale_color_manual(values = colors, labels = models, name = NULL) +
+    guides(color = guide_legend(override.aes = list(size = rep(1, n_models)))) +
+    coord_cartesian(ylim = c(min(loo_fit[["elpd_diff"]]), 0)) +
+    labs(title = "Difference in ELPD Estimates",
+         subtitle = "\u00B1 5 se",
+         x = "Subject ID Number", y = "elpd_diff") +
+    theme_bw() +
+    theme(
+      panel.border = element_blank(),
+      plot.title = element_text(size = 20,
+        margin = margin(5, 0, 5, 0, "pt")),
+      plot.subtitle = element_text(size = 16,
+        margin = margin(5, 0, 20, 0, "pt")),
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 16,
+        margin = margin(10, 0, 0, 0, "pt")),
+      axis.title.y = element_text(size = 16,
+        margin = margin(0, 10, 0, 0, "pt")),
+      legend.position = c(1, 1),
+      legend.justification = c(1, 0),
+      legend.box = "horizontal",
+      legend.direction = "vertical",
+      legend.background = element_rect(fill = "transparent"),
+      legend.text = element_text(size = 12))
+  )
+
+  print(ggplot(loo_fit) +
+    geom_line(size = 1.15, alpha = 0.5, linetype = "dashed",
+              aes(x = subject_id, y = n_pars, color = model_label)) +
+    geom_pointrange(size = 1, shape = 16, alpha = 0.5,
+                    aes(x = subject_id, y = p_loo,
+                        ymin = p_loo - se_p_loo,
+                        ymax = p_loo + se_p_loo,
+                        color = model_label)) +
+    scale_color_manual(values = colors, labels = models, name = NULL) +
+    guides(color = guide_legend(override.aes = list(size = rep(1, n_models)))) +
+    coord_cartesian(ylim = c(0, max(loo_fit[["p_loo"]], 12))) +
+    labs(title = "Effective Number of Parameters",
+         subtitle = "\u00B1 1 se with actual number of parameters",
+         x = "Subject ID Number", y = "Number of Parameters") +
+    theme_bw() +
+    theme(
+      panel.border = element_blank(),
+      plot.title = element_text(size = 20,
+        margin = margin(5, 0, 5, 0, "pt")),
+      plot.subtitle = element_text(size = 16,
+        margin = margin(5, 0, 20, 0, "pt")),
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 16,
+        margin = margin(10, 0, 0, 0, "pt")),
+      axis.title.y = element_text(size = 16,
+        margin = margin(0, 10, 0, 0, "pt")),
+      legend.position = c(1, 1),
+      legend.justification = c(1, 0),
+      legend.box = "horizontal",
+      legend.direction = "vertical",
+      legend.background = element_rect(fill = "transparent"),
+      legend.text = element_text(size = 12))
+  )
+}
 
 plot_post_pred <- function(fit, nk, yn, yl,
                            pred_names = c("ynpred", "ylpred"),
@@ -234,8 +395,8 @@ plot_model_est <- function(fit, nk, yn, yl, parnames,
       data_label = c(rep(1, nki), rep(2, nki)),
       model_label = c(rep(3, nki), rep(4, nki)),
       y_means = c(mu_n, mu_l),
-      y_sds = c((sig2_n - 1) * mu_n*mu_n * sig2_n*sig2_n,
-                (sig2_l - 1) * mu_l*mu_l * sig2_l*sig2_l)
+      y_sds = c(sqrt((sig2_n - 1)) * mu_n * sig2_n,
+                sqrt((sig2_l - 1)) * mu_l * sig2_l)
     )
     df$y_hi <- df$y_means + df$y_sds
     df$y_lo <- df$y_means - df$y_sds
