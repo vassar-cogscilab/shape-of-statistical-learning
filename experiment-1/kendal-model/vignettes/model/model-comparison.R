@@ -89,13 +89,16 @@ load(file = paste0(fit_path, "fit.Rds"))
 ########## Model Comparison
 
 fit_path <- "experiment-1/kendal-model/vignettes/model/fits/"
-load(file = paste0(fit_path, "fit_251_258.Rds"))
+load(file = paste0(fit_path, "fit.Rds"))
 source("experiment-1/kendal-model/vignettes/model/model-comparison-helper-functions.R")
 
 
 
 ### Loo
-fit_loo_comp <- loo_fit(fit_251_258)
+fit_loo_comp <- loo_fit(fit)
+save(fit_loo_comp, compress = "xz", compression_level = 9,
+     file = paste0(fit_path, "fit_loo_comp.Rds"))
+load(file = paste0(fit_path, "fit_loo_comp.Rds"))
 plot_loo_fit(fit_loo_comp)
 
 

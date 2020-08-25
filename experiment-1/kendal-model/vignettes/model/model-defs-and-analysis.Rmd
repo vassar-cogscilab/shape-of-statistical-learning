@@ -46,13 +46,13 @@ MathJax.Hub.Config({
   <li><a href="#rec-small">Consistent but Small Decrease in Response Times</a></li>
   <li><a href="#rec-ret">Sporadic Return to Baseline Response Time</a></li>
   <li><a href="#rec-inc">Increased Response Times at the End of the Experiment</a></li>
+  <li><a href="#rec-other">Other Considerations</a></li>
   </ul></li>
-<li><a href="#comp">Formal Model Comparison (just a sample for now)</a>
+<li><a href="#comp">Formal Model Comparison with PSIS-LOO</a>
   <ul>
-  <li><a href="#comp-ppf">Posterior Predictive Fits</a></li>
-  <li><a href="#comp-bayes">Bayes Factor</a></li>
-  <li><a href="#comp-loo">Loo</a></li>
-  <li><a href="#fits-real">Stacking Weights</a></li>
+  <li><a href="#comp-fit">Fit the Models to Data</a></li>
+  <li><a href="#comp-pre">Preliminary Results of LOO</a></li>
+  <li><a href="#comp-more">More Results</a></li>
   </ul></li>
 <li><a href="#references">References</a></li>
 </ul>
@@ -388,41 +388,16 @@ All three of the prior distributions that we place on the newly added parameters
 
 # Model Recovery {#rec}
 
-This section will contain some basic model recovery experiments in order to determine each model's flexibility when fitting data that exhibit distinct patterns. In each of the following subsections, we will generate response time data to mimic a specific behavioral pattern. Then we will fit this generated data to each of the models from the previous section in order to demonstrate each model's ability to capture commonly observed behaviors. First we define functions to generate the response time data. We will generate data that simulates the response times for both the first letter in the pattern and the third letter in the pattern; if there is evidence of learning the pattern, we expect to see a decrease in the median response time for the third letter and not for the first letter. Our simulated data will be taken from a Log-Normal distribution whose median follows the log of the logistic function. This is basically the model from the Symmetric Logistic Learning section.
+This section will contain some basic model recovery experiments in order to determine each model's flexibility when fitting data that exhibit distinct patterns. In each of the following subsections, we will choose the response time data from one subject in the experiment that most clearly exhibits a specific behavioral pattern. Then we will fit this selected data to each of the models from the previous section in order to demonstrate each model's ability to capture commonly observed behaviors. We will use data for the response times of both the first letter in the pattern and the third letter in the pattern; if there is evidence of learning the pattern, we expect to see a decrease in the median response time for the third letter and not for the first letter. First we read the data from file so that we can later select individual participants' response time data.
 
-```{r exp-log-funcs, eval=TRUE}
-exp_log <- function(trial, V, E, A, D, L, H) {
-  return( (V + E*exp(-A*trial)) * (1 - D/(1 + exp(-L*(trial-H)))) )
-}
-sim_exp_log <- function(trial, V, E, A, D, L, H, var,
-                        rand = FALSE, bored = FALSE) {
-  sim <- rlnorm(length(trial),
-                log(exp_log(trial = trial, E = E, A = A, V = V,
-                            D = D, L = L, H = H)),
-                log(var))
-
-  if (bored) {
-    sim <- sim + 1e-5*E*exp(A*(trial-H))
-  }
-
-  if (rand) {
-  rand_idx <- sample((H/2):length(sim), H/4)
-  sim[rand_idx] <- rlnorm(length(rand_idx),
-                log(exp_log(trial = rand_idx, E = E, A = A, V = V,
-                            D = 0, L = L, H = H)),
-                log(var))
-  }
-
-  return(sim)
-}
+```{r load-data, eval=TRUE}
+load(file = "experiment-1/kendal-model/exp1.Rds")
 ```
 
 <div class="indent2">
 ## No Evidence of Learning {#rec-nolearn}
 
-171 130
-
-First, we will generate response time data to simulate a participant that exhibits no evidence of learning the lexicographical pattern in the sequence of letters. This data will contain the adaptation to the experimental task, as shown by a decrease in response time across the first several trials of the experiment. Following that, however, will be no further changes to the median response time.
+The first behavioral pattern that we will test is from a participant that exhibits no evidence of learning the lexicographical pattern in the sequence of letters. This data will contain the adaptation to the experimental task, as shown by a decrease in response time across the first several trials of the experiment. Following that, however, will be no further changes to the median response time. Overall, this data should heavily favor the No Learning Model. We will use `subject_id = 171` for this subsection; another consideration would be subject 130.
 
 <div class="indent3">
 ### No Learning Model {#rec-nolearn-no}
@@ -435,8 +410,8 @@ First, we will generate response time data to simulate a participant that exhibi
 
 
 ## Strong Evidence of Learning {#rec-learn}
-74 204
-Second, we will generate response time data to simulate a participant that exhibits strong evidence of learning the lexicographical pattern in the sequence of letters. This data will not only contain the adaptation to the experimental task, but it will also contain a significant decrease in the median response time of the learned letter halfway through the experiment. To best mimic the actual data, we will use a very sharp learning curve
+
+Second, we will use response time data from a participant that exhibits strong evidence of learning the lexicographical pattern in the sequence of letters. This data will not only contain the adaptation to the experimental task, but it will also contain a significant decrease in the median response time of the learned letter approximately two-thirds of the way through the experiment. We expect the No Learning Model to struggle with this data while the other three models should be able to capture the behavior quite well. Here we will use `subject_id = 74`, although subject 204 is another option.
 
 <div class="indent3">
 ### No Learning Model {#rec-learn-no}
@@ -449,7 +424,9 @@ Second, we will generate response time data to simulate a participant that exhib
 
 
 ## Consistent but Small Decrease in Response Times {#rec-small}
-142 (143?) 237
+
+In this subsection, we will test the models with data from a participant that shows a small, but consistent, decrease in their response times. This behavior suggests that the subject may have learned the lexicographical pattern, but their response times did not decrease as significantly. Data of this shape can be tricky as the small decrease in response time presents a difficult distinction between whether the No Learning Model should fit better than the three learning models. For this data, we will use 'subject_id = 142', and subjects 237 and possibly 143 are good as well.
+
 <div class="indent3">
 ### No Learning Model {#rec-small-no}
 ### Step Learning Model {#rec-small-step}
@@ -462,6 +439,9 @@ Second, we will generate response time data to simulate a participant that exhib
 
 ## Sporadic Return to Baseline Response Time {#rec-ret}
 28 152 235
+This subsection will focus on when the response times of the learned third letter occasionally revert back to the baseline prior to learning. This sporadic behavior could show evidence of another possible consequence of a loss of focus during the experiment, but it could also be something more innocent such as temporarily forgetting the pattern. Since the models do not have a built in mechanism to capture this seemingly stochastic behavior, they will likely fit somewhere in between , possibly approaching a similar fit to the small but consistent decrease in response time from the previous section. The participant that most clearly demonstrates this behavior is `subject_id = 28`, but subjects 152 and 235 are also options.
+
+
 <div class="indent3">
 ### No Learning Model {#rec-ret-no}
 ### Step Learning Model {#rec-ret-step}
@@ -473,20 +453,26 @@ Second, we will generate response time data to simulate a participant that exhib
 
 
 ## Increased Response Times at the End of the Experiment {#rec-inc}
-149 86 50
+
+An inevitable feature of lengthy and repetitive laboratory experiments is that the participant eventually gets bored of completing the same task over and over again. This loss of focus can lead to lack of thought and care in the participant's responses; but in particular to this experiment, we observe increased response times relative to their normal baseline. A significant increase in the median response time toward the end of the experiment can hinder the models' abilities to accurately capture the true learning (or lack of learning) that occurs throughout the experiment. We expect that the models will fit slightly higher post-learning median response times to accommodate for this late increase. We will use `subject_id = 149` for this testing, but alternatives are subjects 86 and 50.
+
 <div class="indent3">
 ### No Learning Model {#rec-inc-no}
 ### Step Learning Model {#rec-inc-step}
 ### Symmetric Logistic Learning Model {#rec-inc-sym}
 ### Asymmetric Logistic Learning Model {#rec-inc-asym}
 </div>
+
+
+
+
+## Other Considerations {#rec-other}
+both sporadic return and boredom: 187
+
+boredom and sporadic return at the end (perhaps because of boredom) (with learning): 7
 </div>
 
-both sporadic return and boredom
-187
 
-boredom and sporadic return at the end (perhaps because of boredom) (with learning)
-7
 
 
 
