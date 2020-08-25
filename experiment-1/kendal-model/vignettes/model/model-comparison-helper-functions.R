@@ -131,8 +131,8 @@ loo_fit <- function(fit, sub_ids = NULL,
                     looic = double(n_row),
                     se_looic = double(n_row))
   for (i in 1:n_sub_ids) {
-    # tmp <- fit[[as.character(sub_ids[i])]]
-    tmp <- fit[[sub_ids[i]]]
+    tmp <- fit[[as.character(sub_ids[i])]]
+    # tmp <- fit[[sub_ids[i]]]
     loos <- list()
     for (m in 1:n_models) {
       loos[[m]] <- loo::loo(tmp[[models[m]]])
@@ -234,13 +234,13 @@ plot_loo_fit <- function(loo_fit) {
   )
 
   print(ggplot(loo_fit) +
-    geom_line(size = 1.15, alpha = 0.5, linetype = "dashed",
-              aes(x = subject_id, y = n_pars, color = model_label)) +
     geom_pointrange(size = 1, shape = 16, alpha = 0.5,
                     aes(x = subject_id, y = p_loo,
                         ymin = p_loo - se_p_loo,
                         ymax = p_loo + se_p_loo,
                         color = model_label)) +
+    geom_line(size = 1.15, alpha = 0.5, linetype = "dashed",
+              aes(x = subject_id, y = n_pars, color = model_label)) +
     scale_color_manual(values = colors, labels = models, name = NULL) +
     guides(color = guide_legend(override.aes = list(size = rep(1, n_models)))) +
     coord_cartesian(ylim = c(0, max(loo_fit[["p_loo"]], 12))) +
