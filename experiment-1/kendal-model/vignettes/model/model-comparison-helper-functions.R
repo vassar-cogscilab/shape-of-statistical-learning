@@ -150,7 +150,7 @@ loo_fit <- function(fit, sub_ids = NULL,
 ######################### Plotting #############################################
 library("ggplot2")
 
-plot_loo_fit <- function(loo_fit) {
+plot_loo_fit <- function(loo_fit, save_path = NULL) {
   sub_ids <- unique(loo_fit[["subject_id"]])
   n_sub_ids <- length(sub_ids)
   models <- c("no learning", "step learning",
@@ -199,6 +199,10 @@ plot_loo_fit <- function(loo_fit) {
       legend.background = element_rect(fill = "transparent"),
       legend.text = element_text(size = 12))
   )
+  if (!is.null(save_path)) {
+    ggsave(file = paste0(save_path, "/elpd_percent.png"),
+           width = 16, height = 9)
+  }
 
   print(ggplot(loo_fit) +
     geom_pointrange(size = 1, shape = 16, alpha = 0.5,
@@ -232,6 +236,10 @@ plot_loo_fit <- function(loo_fit) {
       legend.background = element_rect(fill = "transparent"),
       legend.text = element_text(size = 12))
   )
+  if (!is.null(save_path)) {
+    ggsave(file = paste0(save_path, "/elpd_difference.png"),
+           width = 16, height = 9)
+  }
 
   print(ggplot(loo_fit) +
     geom_pointrange(size = 1, shape = 16, alpha = 0.5,
@@ -239,7 +247,7 @@ plot_loo_fit <- function(loo_fit) {
                         ymin = p_loo - se_p_loo,
                         ymax = p_loo + se_p_loo,
                         color = model_label)) +
-    geom_line(size = 1.15, alpha = 0.5, linetype = "dashed",
+    geom_line(size = 1.15, alpha = 1, linetype = "dashed",
               aes(x = subject_id, y = n_pars, color = model_label)) +
     scale_color_manual(values = colors, labels = models, name = NULL) +
     guides(color = guide_legend(override.aes = list(size = rep(1, n_models)))) +
@@ -267,6 +275,10 @@ plot_loo_fit <- function(loo_fit) {
       legend.background = element_rect(fill = "transparent"),
       legend.text = element_text(size = 12))
   )
+  if (!is.null(save_path)) {
+    ggsave(file = paste0(save_path, "/p_loo.png"),
+           width = 16, height = 9)
+  }
 }
 
 plot_post_pred <- function(fit, nk, yn, yl,

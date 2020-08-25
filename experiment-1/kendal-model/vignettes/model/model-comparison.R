@@ -103,7 +103,8 @@ save(loo_fits, compress = "xz", compression_level = 9,
      file = paste0(fit_path, "loo_fits.Rds"))
 load(file = paste0(fit_path, "loo_fits.Rds"))
 
-plot_loo_fit(loo_fits)
+plot_loo_fit(loo_fits,
+             save_path = "experiment-1/kendal-model/vignettes/model/fits")
 
 
 ########## Visualize Model Fits
