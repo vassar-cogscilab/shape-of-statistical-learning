@@ -1,5 +1,7 @@
 ######################### Data Fitting #########################################
-data_fit <- function(data, sub_ids = NULL) {
+data_fit <- function(data, sub_ids = NULL,
+                     n_chains = 1, n_iterations = 500,
+                     adapt_delta = 0.9, max_treedepth = 10) {
   if(is.null(sub_ids)) {
     sub_ids <- sort(unique(data[["subject_id"]]))
   }
@@ -29,33 +31,40 @@ data_fit <- function(data, sub_ids = NULL) {
     out[[as.character(i)]] <- list(
       "no_learning" =
         rstan::sampling(no_learning_model,
-        data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
-        refresh = FALSE, chains = 1, iter = 500,
-        control = list(adapt_delta = 0.9, max_treedepth = 10),
-        init = list( list(
-          V = 1, E = 0.25, A = 0.25, S = 0 )) ),
+          data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
+          refresh = FALSE, chains = n_chains, iter = n_iterations,
+          control = list(adapt_delta = adapt_delta,
+                         max_treedepth = max_treedepth),
+          init = rep( list( list(
+            V = 1, E = 0.25, A = 0.25, S = 0) ),
+            n_chains) ),
       "step_learning" =
         rstan::sampling(step_learning_model,
-        data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
-        refresh = FALSE, chains = 1, iter = 500,
-        control = list(adapt_delta = 0.9, max_treedepth = 10),
-        init = list( list(
-          V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, H_raw = 0.5 )) ),
+          data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
+          refresh = FALSE, chains = n_chains, iter = n_iterations,
+          control = list(adapt_delta = adapt_delta,
+                         max_treedepth = max_treedepth),
+          init = rep( list( list(
+            V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, H_raw = 0.5) ),
+            n_chains) ),
       "symmetric_logistic_learning" =
         rstan::sampling(symmetric_logistic_learning_model,
-        data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
-        refresh = FALSE, chains = 1, iter = 500,
-        control = list(adapt_delta = 0.9, max_treedepth = 10),
-        init = list( list(
-          V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5 )) ),
+          data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
+          refresh = FALSE, chains = n_chains, iter = n_iterations,
+          control = list(adapt_delta = adapt_delta,
+                         max_treedepth = max_treedepth),
+          init = rep( list( list(
+            V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5) ),
+            n_chains) ),
       "asymmetric_logistic_learning" =
         rstan::sampling(asymmetric_logistic_learning_model,
-        data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
-        refresh = FALSE, chains = 1, iter = 500,
-        control = list(adapt_delta = 0.9, max_treedepth = 10),
-        init = list( list(
-          V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5,
-          NU = 1, C = 1, Q = 1 )) )
+          data = list('nk' = nk, 'yn' = yn, 'yl' = yl),
+          refresh = FALSE, chains = n_chains, iter = n_iterations,
+          control = list(adapt_delta = adapt_delta,
+                         max_treedepth = max_treedepth),
+          init = rep( list( list(
+            V = 1, E = 0.25, A = 0.25, S = 0, D = 0.5, L = 6, H_raw = 0.5,
+            NU = 1, C = 1, Q = 1) ), n_chains) )
     )
   }
   return(out)
