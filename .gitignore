@@ -40,4 +40,4 @@ rsconnect/
 **/desktop.ini
 
 # Some (large) fits Kendal did
-experiment-1/kendal-model/vignettes/model/fits/*.Rds
+experiment-1/kendal-model/vignettes/model/fits/**/*.Rds
