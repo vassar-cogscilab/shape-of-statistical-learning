@@ -114,7 +114,7 @@ loo_fit <- function(fit, sub_ids = NULL,
                                "symmetric_logistic_learning",
                                "asymmetric_logistic_learning")) {
   if (is.null(sub_ids)) {
-    sub_ids <- seq_len(length(fit))
+    sub_ids <- names(fit)
   }
   n_sub_ids <- length(sub_ids)
   n_models <- length(models)
@@ -292,116 +292,282 @@ plot_loo_fit <- function(loo_fit, sub_ids = NULL, save_path = NULL) {
   }
 }
 
-# plot_post_pred <- function(fit, data, sub_ids,
-#                            pred_names = c("ynpred", "ylpred"),
-#                            models = c("no_learning", "step_learning",
-#                                       "symmetric_logistic_learning",
-#                                       "asymmetric_logistic_learning")) {
-#   for (ind in 1:length(sub_ids)) {
-#     # read and clean data
-#     yn <- data[data[["subject_id"]] == sub_ids[ind] &
-#                data[["is_predictable"]] == 0, "rt"]/1000
-#     yl <- data[data[["subject_id"]] == sub_ids[ind] &
-#                data[["is_predictable"]] == 1, "rt"]/1000
-#     nk <- min(length(yn), length(yl))
-#     yn <- yn[seq_len(nk)]
-#     yl <- yl[seq_len(nk)]
-#     bad_idx <- which(yn < 0 | yn > 2 | yl < 0 | yl > 2)
-#     n_bad_idx <- length(bad_idx)
-#     if (n_bad_idx > 0) {
-#       yn <- yn[-bad_idx]
-#       yl <- yl[-bad_idx]
-#       nk <- nk - n_bad_idx
-#     }
-#
-#     ynpred <- rstan::extract(fit)[[pred_names[1]]]
-#     ylpred <- rstan::extract(fit)[[pred_names[2]]]
-#
-#   k <- length(nk)
-#   st <- 0
-#   for (i in 1:k) {
-#     n <- nk[i]
-#     ynpredi <- ynpred[, (st+1):(st+nk[i])]
-#     ylpredi <- ylpred[, (st+1):(st+nk[i])]
-#     yni <- yn[(st+1):(st+nk[i])]
-#     yli <- yl[(st+1):(st+nk[i])]
-#     st = st + nk[i]
-#
-#     df <- data.frame(
-#       x = rep(seq_len(n), 2),
-#       y = c(yni, yli),
-#       data_label = c(rep(1, n), rep(2, n)),
-#       pred_label = c(rep(3, n), rep(4, n)),
-#       y_means = c(apply(ynpredi, 2, mean), apply(ylpredi, 2, mean)),
-#       y_sds = c(apply(ynpredi, 2, sd), apply(ylpredi, 2, sd))
-#     )
-#     df$y_hi <- df$y_means + df$y_sds
-#     df$y_lo <- df$y_means - df$y_sds
-#     df$dummy <- rep(5, 2*n)
-#
-#     # factor levels key (since R makes it alphabetical otherwise)
-#       # 1: Non-Learned Data
-#       # 2: Learned Data
-#       # 3: Non-Learned Fit
-#       # 4: Learned Fit
-#
-#     print(ggplot(df) +
-#       geom_ribbon(linetype = "blank", alpha = 0.25, outline.type = NULL,
-#         aes(x = x, ymin = y_lo, ymax = y_hi,
-#             fill = factor(pred_label, levels = c(3, 4)))) +
-#       geom_line(size = 1.25, alpha = 0.6,
-#         aes(x = x, y = y_means,
-#             color = factor(pred_label, levels = c(3, 4)))) +
-#       geom_point(shape = 16, size = 1.8, alpha = 0.6,
-#         aes(x = x, y = y,
-#             fill = factor(data_label, levels = c(1, 2)),
-#             color = factor(data_label, levels = c(1, 2)))) +
-#       geom_point(alpha = 0, size = 1, shape = 21,
-#         aes(x = x, y = y,
-#             fill = factor(dummy, levels = c(5)))) +
-#       scale_color_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f"),
-#         guide = FALSE) +
-#       scale_fill_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
-#         labels = c("Non-Learned Data", "Learned Data",
-#                    "Non-Learned Fit \u00B1 1 sd", "Learned Fit \u00B1 1 sd", ""),
-#                    name = NULL) +
-#       guides(fill = guide_legend(
-#         override.aes = list(
-#           size = c(2.5, 2.5, 6, 6, 8),
-#           shape = c(16, 16, -0x2014L, -0x2014L, -0x2014L),
-#           color = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
-#           fill = c(NA, NA, "#80b3ff40", "#ff4f4f40", "#ffffff")))) +
-#       labs(title = plot_title, subtitle = paste0("Subject ", i),
-#            x = "Trial Number", y = "Response Time (sec)") +
-#       theme_bw() +
-#       theme(
-#         panel.border = element_blank(),
-#         plot.title = element_text(size = 20,
-#           margin = margin(5, 0, 5, 0, "pt")),
-#         plot.subtitle = element_text(size = 18,
-#           margin = margin(5, 0, 20, 0, "pt")),
-#         axis.text.x = element_text(size = 14),
-#         axis.text.y = element_text(size = 14),
-#         axis.title.x = element_text(size = 16,
-#           margin = margin(10, 0, 0, 0, "pt")),
-#         axis.title.y = element_text(size = 16,
-#           margin = margin(0, 10, 0, 0, "pt")),
-#         legend.position = c(1, 1.1),
-#         legend.justification = c(1, 1),
-#         legend.box = "horizontal",
-#         legend.direction = "vertical",
-#         legend.background = element_rect(fill = "transparent"),
-#         legend.text = element_text(size = 12))
-#     )
-#   }
-# }
-
-
-
-plot_model_est <- function(fit, data, sub_ids,
+plot_post_pred <- function(fit, data, sub_ids = NULL,
+                           pred_names = c("ynpred", "ylpred"),
                            models = c("no_learning", "step_learning",
                                       "symmetric_logistic_learning",
                                       "asymmetric_logistic_learning")) {
+  if (is.null(sub_ids)) {
+    sub_ids <- names(fit)
+  }
+
+  for (ind in 1:length(sub_ids)) {
+    # read and clean data
+    yn <- data[data[["subject_id"]] == sub_ids[ind] &
+               data[["is_predictable"]] == 0, "rt"]/1000
+    yl <- data[data[["subject_id"]] == sub_ids[ind] &
+               data[["is_predictable"]] == 1, "rt"]/1000
+    nk <- min(length(yn), length(yl))
+    yn <- yn[seq_len(nk)]
+    yl <- yl[seq_len(nk)]
+    bad_idx <- which(yn < 0 | yn > 2 | yl < 0 | yl > 2)
+    n_bad_idx <- length(bad_idx)
+    if (n_bad_idx > 0) {
+      yn <- yn[-bad_idx]
+      yl <- yl[-bad_idx]
+      nk <- nk - n_bad_idx
+    }
+
+    df <- data.frame(
+      x = rep(1:nk, 2),
+      y_data = c(yn, yl),
+      data_label = c(rep(1, nk), rep(2, nk)),
+      model_label = c(rep(3, nk), rep(4, nk)),
+      y_nol = c(
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[1]]])[[pred_names[1]]], 2, mean),
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[1]]])[[pred_names[2]]], 2, mean)),
+      y_stp = c(
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[2]]])[[pred_names[1]]], 2, mean),
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[2]]])[[pred_names[2]]], 2, mean)),
+      y_sym = c(
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[3]]])[[pred_names[1]]], 2, mean),
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[3]]])[[pred_names[2]]], 2, mean)),
+      y_asy = c(
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[4]]])[[pred_names[1]]], 2, mean),
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[4]]])[[pred_names[2]]], 2, mean)),
+      sd_nol = c(
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[1]]])[[pred_names[1]]], 2, sd),
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[1]]])[[pred_names[2]]], 2, sd)),
+      sd_stp = c(
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[2]]])[[pred_names[1]]], 2, sd),
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[2]]])[[pred_names[2]]], 2, sd)),
+      sd_sym = c(
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[3]]])[[pred_names[1]]], 2, sd),
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[3]]])[[pred_names[2]]], 2, sd)),
+      sd_asy = c(
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[4]]])[[pred_names[1]]], 2, sd),
+        apply(rstan::extract(fit[[as.character(sub_ids[ind])]][[models[4]]])[[pred_names[2]]], 2, sd))
+    )
+    df[["dummy"]] <- rep(5, 2*nk)
+
+    # factor levels key (since R makes it alphabetical otherwise)
+      # 1: Non-Learned Data
+      # 2: Learned Data
+      # 3: Non-Learned Fit
+      # 4: Learned Fit
+
+    print(ggplot(df) +
+      geom_ribbon(linetype = "blank", alpha = 0.25, outline.type = NULL,
+        aes(x = x, ymin = y_nol-sd_nol, ymax = y_nol+sd_nol,
+            fill = factor(model_label, levels = c(3, 4)))) +
+      geom_line(size = 1.25, alpha = 0.6,
+        aes(x = x, y = y_nol,
+            color = factor(model_label, levels = c(3, 4)))) +
+      geom_point(shape = 16, size = 1.8, alpha = 0.6,
+        aes(x = x, y = y_data,
+            fill = factor(data_label, levels = c(1, 2)),
+            color = factor(data_label, levels = c(1, 2)))) +
+      geom_point(alpha = 0, size = 1, shape = 21,
+        aes(x = x, y = y_data,
+            fill = factor(dummy, levels = c(5)))) +
+      scale_color_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f"),
+        guide = FALSE) +
+      scale_fill_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
+        labels = c("Non-Learned Data", "Learned Data",
+                   "Non-Learned Fit \u00B1 1 sd", "Learned Fit \u00B1 1 sd", ""),
+                   name = NULL) +
+      guides(fill = guide_legend(
+        override.aes = list(
+          size = c(2.5, 2.5, 6, 6, 8),
+          shape = c(16, 16, -0x2014L, -0x2014L, -0x2014L),
+          color = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
+          fill = c(NA, NA, "#80b3ff40", "#ff4f4f40", "#ffffff")))) +
+      labs(title = "No Learning Model Fit",
+           subtitle = paste0("Subject ", sub_ids[ind]),
+           x = "Trial Number", y = "Response Time (sec)") +
+      theme_bw() +
+      theme(
+        panel.border = element_blank(),
+        plot.title = element_text(size = 20,
+          margin = margin(5, 0, 5, 0, "pt")),
+        plot.subtitle = element_text(size = 18,
+          margin = margin(5, 0, 20, 0, "pt")),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.x = element_text(size = 16,
+          margin = margin(10, 0, 0, 0, "pt")),
+        axis.title.y = element_text(size = 16,
+          margin = margin(0, 10, 0, 0, "pt")),
+        legend.position = c(1, 1.1),
+        legend.justification = c(1, 1),
+        legend.box = "horizontal",
+        legend.direction = "vertical",
+        legend.background = element_rect(fill = "transparent"),
+        legend.text = element_text(size = 12))
+    )
+
+    print(ggplot(df) +
+      geom_ribbon(linetype = "blank", alpha = 0.25, outline.type = NULL,
+        aes(x = x, ymin = y_stp-sd_stp, ymax = y_stp+sd_stp,
+            fill = factor(model_label, levels = c(3, 4)))) +
+      geom_line(size = 1.25, alpha = 0.6,
+        aes(x = x, y = y_stp,
+            color = factor(model_label, levels = c(3, 4)))) +
+      geom_point(shape = 16, size = 1.8, alpha = 0.6,
+        aes(x = x, y = y_data,
+            fill = factor(data_label, levels = c(1, 2)),
+            color = factor(data_label, levels = c(1, 2)))) +
+      geom_point(alpha = 0, size = 1, shape = 21,
+        aes(x = x, y = y_data,
+            fill = factor(dummy, levels = c(5)))) +
+      scale_color_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f"),
+        guide = FALSE) +
+      scale_fill_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
+        labels = c("Non-Learned Data", "Learned Data",
+                   "Non-Learned Fit \u00B1 1 sd", "Learned Fit \u00B1 1 sd", ""),
+                   name = NULL) +
+      guides(fill = guide_legend(
+        override.aes = list(
+          size = c(2.5, 2.5, 6, 6, 8),
+          shape = c(16, 16, -0x2014L, -0x2014L, -0x2014L),
+          color = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
+          fill = c(NA, NA, "#80b3ff40", "#ff4f4f40", "#ffffff")))) +
+      labs(title = "Step Learning Model Fit",
+           subtitle = paste0("Subject ", sub_ids[ind]),
+           x = "Trial Number", y = "Response Time (sec)") +
+      theme_bw() +
+      theme(
+        panel.border = element_blank(),
+        plot.title = element_text(size = 20,
+          margin = margin(5, 0, 5, 0, "pt")),
+        plot.subtitle = element_text(size = 18,
+          margin = margin(5, 0, 20, 0, "pt")),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.x = element_text(size = 16,
+          margin = margin(10, 0, 0, 0, "pt")),
+        axis.title.y = element_text(size = 16,
+          margin = margin(0, 10, 0, 0, "pt")),
+        legend.position = c(1, 1.1),
+        legend.justification = c(1, 1),
+        legend.box = "horizontal",
+        legend.direction = "vertical",
+        legend.background = element_rect(fill = "transparent"),
+        legend.text = element_text(size = 12))
+    )
+
+    print(ggplot(df) +
+      geom_ribbon(linetype = "blank", alpha = 0.25, outline.type = NULL,
+        aes(x = x, ymin = y_sym-sd_sym, ymax = y_sym+sd_sym,
+            fill = factor(model_label, levels = c(3, 4)))) +
+      geom_line(size = 1.25, alpha = 0.6,
+        aes(x = x, y = y_sym,
+            color = factor(model_label, levels = c(3, 4)))) +
+      geom_point(shape = 16, size = 1.8, alpha = 0.6,
+        aes(x = x, y = y_data,
+            fill = factor(data_label, levels = c(1, 2)),
+            color = factor(data_label, levels = c(1, 2)))) +
+      geom_point(alpha = 0, size = 1, shape = 21,
+        aes(x = x, y = y_data,
+            fill = factor(dummy, levels = c(5)))) +
+      scale_color_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f"),
+        guide = FALSE) +
+      scale_fill_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
+        labels = c("Non-Learned Data", "Learned Data",
+                   "Non-Learned Fit \u00B1 1 sd", "Learned Fit \u00B1 1 sd", ""),
+                   name = NULL) +
+      guides(fill = guide_legend(
+        override.aes = list(
+          size = c(2.5, 2.5, 6, 6, 8),
+          shape = c(16, 16, -0x2014L, -0x2014L, -0x2014L),
+          color = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
+          fill = c(NA, NA, "#80b3ff40", "#ff4f4f40", "#ffffff")))) +
+      labs(title = "Symmetric Logistic Learning Model Fit",
+           subtitle = paste0("Subject ", sub_ids[ind]),
+           x = "Trial Number", y = "Response Time (sec)") +
+      theme_bw() +
+      theme(
+        panel.border = element_blank(),
+        plot.title = element_text(size = 20,
+          margin = margin(5, 0, 5, 0, "pt")),
+        plot.subtitle = element_text(size = 18,
+          margin = margin(5, 0, 20, 0, "pt")),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.x = element_text(size = 16,
+          margin = margin(10, 0, 0, 0, "pt")),
+        axis.title.y = element_text(size = 16,
+          margin = margin(0, 10, 0, 0, "pt")),
+        legend.position = c(1, 1.1),
+        legend.justification = c(1, 1),
+        legend.box = "horizontal",
+        legend.direction = "vertical",
+        legend.background = element_rect(fill = "transparent"),
+        legend.text = element_text(size = 12))
+    )
+
+    print(ggplot(df) +
+      geom_ribbon(linetype = "blank", alpha = 0.25, outline.type = NULL,
+        aes(x = x, ymin = y_asy-sd_asy, ymax = y_asy+sd_asy,
+            fill = factor(model_label, levels = c(3, 4)))) +
+      geom_line(size = 1.25, alpha = 0.6,
+        aes(x = x, y = y_asy,
+            color = factor(model_label, levels = c(3, 4)))) +
+      geom_point(shape = 16, size = 1.8, alpha = 0.6,
+        aes(x = x, y = y_data,
+            fill = factor(data_label, levels = c(1, 2)),
+            color = factor(data_label, levels = c(1, 2)))) +
+      geom_point(alpha = 0, size = 1, shape = 21,
+        aes(x = x, y = y_data,
+            fill = factor(dummy, levels = c(5)))) +
+      scale_color_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f"),
+        guide = FALSE) +
+      scale_fill_manual(values = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
+        labels = c("Non-Learned Data", "Learned Data",
+                   "Non-Learned Fit \u00B1 1 sd", "Learned Fit \u00B1 1 sd", ""),
+                   name = NULL) +
+      guides(fill = guide_legend(
+        override.aes = list(
+          size = c(2.5, 2.5, 6, 6, 8),
+          shape = c(16, 16, -0x2014L, -0x2014L, -0x2014L),
+          color = c("#999999", "#000000", "#80b3ff", "#ff4f4f", "#ffffff"),
+          fill = c(NA, NA, "#80b3ff40", "#ff4f4f40", "#ffffff")))) +
+      labs(title = "Asymmetric Logistic Learning Model Fit",
+           subtitle = paste0("Subject ", sub_ids[ind]),
+           x = "Trial Number", y = "Response Time (sec)") +
+      theme_bw() +
+      theme(
+        panel.border = element_blank(),
+        plot.title = element_text(size = 20,
+          margin = margin(5, 0, 5, 0, "pt")),
+        plot.subtitle = element_text(size = 18,
+          margin = margin(5, 0, 20, 0, "pt")),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.x = element_text(size = 16,
+          margin = margin(10, 0, 0, 0, "pt")),
+        axis.title.y = element_text(size = 16,
+          margin = margin(0, 10, 0, 0, "pt")),
+        legend.position = c(1, 1.1),
+        legend.justification = c(1, 1),
+        legend.box = "horizontal",
+        legend.direction = "vertical",
+        legend.background = element_rect(fill = "transparent"),
+        legend.text = element_text(size = 12))
+    )
+  }
+}
+
+
+
+plot_model_est <- function(fit, data, sub_ids = NULL,
+                           models = c("no_learning", "step_learning",
+                                      "symmetric_logistic_learning",
+                                      "asymmetric_logistic_learning")) {
+  if (is.null(sub_ids)) {
+    sub_ids <- names(fit)
+  }
+
   # define some functions
   mu_n <- function(nk, pars) {
     return(pars[["V"]] + pars[["E"]] * exp(-pars[["A"]] * 1:nk))
