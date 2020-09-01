@@ -34,7 +34,7 @@ model {
   A ~ gamma(2.5, 10);
   S ~ normal(0, 0.5);
 
-  D ~ beta(2.5, 2.5);
+  D ~ beta(5, 1);
   H_raw ~ beta(1.5, 1.5);
 
   sigma2_n ~ gamma(3, 2);

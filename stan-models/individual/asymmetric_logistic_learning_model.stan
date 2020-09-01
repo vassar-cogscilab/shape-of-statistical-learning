@@ -37,7 +37,7 @@ model {
   E ~ gamma(2.5, 10);
   A ~ gamma(2.5, 10);
   S ~ normal(0, 0.5);
-  D ~ beta(2.5, 2.5);
+  D ~ beta(5, 1);
   L ~ gamma(1.5, 0.25);
   H_raw ~ beta(1.5, 1.5);
   NU ~ gamma(10, 10);
