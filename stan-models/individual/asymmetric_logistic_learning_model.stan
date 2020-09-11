@@ -20,7 +20,6 @@ parameters { // define parameters (and their bounds) used in the model
   real<lower=0, upper=1> H_raw;  // horizontal shift in onset of learning (raw)
 
   real<lower=0> NU; // affects near which asymptote maximum growth occurs
-  // real<lower=0> C; // affects upper asymptote (lower for us)
   real<lower=0> Q; // related to inital value of mu_l
 
   real<lower=0> sigma2_n; // main component of variance in non-learned response times
@@ -41,23 +40,10 @@ model {
   target += gamma_lpdf(L | 12, 36);
   target += beta_lpdf(H_raw | 10, 8);
   target += gamma_lpdf(NU | 100, 100);
-  // target += gamma_lpdf(C | 100, 100);
   target += gamma_lpdf(Q | 100, 100);
-  // V ~ gamma(5, 4);
-  // E ~ gamma(2.5, 10);
-  // A ~ gamma(2.5, 10);
-  // S ~ normal(0, 0.1);
-  // D ~ beta(15, 1);
-  // L ~ gamma(12, 36);
-  // H_raw ~ beta(10, 8);
-  // NU ~ gamma(100, 100);
-  // C ~ gamma(100, 100);
-  // Q ~ gamma(100, 100);
 
   target += gamma_lpdf(sigma2_n | 3, 2);
   target += gamma_lpdf(sigma2_l | 3, 2);
-  // sigma2_n ~ gamma(3, 2);
-  // sigma2_l ~ gamma(3, 2);
 
   {
     vector[nk] mu_n;
@@ -74,8 +60,6 @@ model {
 
     target += lognormal_lpdf(yn | mu_n, 0.5*log(sigma2_n));
     target += lognormal_lpdf(yl | mu_l, 0.5*log(sigma2_l));
-    // yn ~ lognormal( mu_n, 0.5*log(sigma2_n) );
-    // yl ~ lognormal( mu_l, 0.5*log(sigma2_l) );
   }
 }
 

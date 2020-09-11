@@ -25,15 +25,9 @@ model {
   target += gamma_lpdf(E | 2.5, 10);
   target += gamma_lpdf(A | 2.5, 10);
   target += normal_lpdf(S | 0, 0.1);
-  // V ~ gamma(5, 4);
-  // E ~ gamma(2.5, 10);
-  // A ~ gamma(2.5, 10);
-  // S ~ normal(0, 0.1);
 
   target += gamma_lpdf(sigma2_n | 3, 2);
   target += gamma_lpdf(sigma2_l | 3, 2);
-  // sigma2_n ~ gamma(3, 2);
-  // sigma2_l ~ gamma(3, 2);
 
   {
     vector[nk] mu_n;
@@ -49,8 +43,6 @@ model {
 
     target += lognormal_lpdf(yn | mu_n, 0.5*log(sigma2_n));
     target += lognormal_lpdf(yl | mu_l, 0.5*log(sigma2_l));
-    // yn ~ lognormal( mu_n, 0.5*log(sigma2_n) );
-    // yl ~ lognormal( mu_l, 0.5*log(sigma2_l) );
   }
 }
 

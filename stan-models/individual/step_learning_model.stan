@@ -20,36 +20,31 @@ data { // these values are input to the sampling function
   vector<lower=0, upper=2>[nk] yl; // RT data from the individual for each trial of is_predictable=1
 }
 
-// transformed data { // manipulations of the input data
-//   real log_unif = -log(nk);
-// }
-
 parameters { // define parameters (and their bounds) used in the model
   real<lower=0, upper=2> V;  // vertical shift of all repsonse times
   real<lower=0> E;  // overall scale of exponential
   real<lower=0> A;  // adaptation rate
   real S; // shift in median learned response time relative to non-learned
 
-  real<lower=0, upper=1> D_raw;  // scale of learning "drop"
-  // real<lower=0, upper=1> H_raw;  // horizontal shift in onset of learning (raw)
+  real<lower=0, upper=1> D_raw;  // scale of learning "drop" (raw)
 
   real<lower=0> sigma2_n; // main component of variance in non-learned response times
   real<lower=0> sigma2_l; // main component of variance in learned response times
 }
 
 transformed parameters { // manipulations of the parameters (really, just their bounds)
-  // real H = H_raw * nk;
-  real D = D_raw * V;
-  // vector[nk] H = rep_vector(log_unif, nk);
-  vector[nk] H;
+  real D = D_raw * V; // scale of learning "drop" (properly scaled)
+  vector[nk] H; // horizontal shift in onset of learning
+  vector[nk+1] lp_e;
+  vector[nk+1] lp_l;
+  lp_e[1] = 0;
+  lp_l[1] = 0;
   for (i in 1:nk) {
+    lp_e[i+1] = lp_e[i] + lognormal_lpdf(yl[i] | log( V + E*exp(-A*i) + S ), 0.5*log(sigma2_l));
+    lp_l[i+1] = lp_l[i] + lognormal_lpdf(yl[i] | log( V + E*exp(-A*i) + S ) + log1m(D), 0.5*log(sigma2_l));
     H[i] = -lbeta(10, 8) + 9*log((i+0.0)/nk) + 7*log(1 - (i+0.0)/nk);
-    for (j in 1:nk) {
-      H[i] += lognormal_lpdf(yl[j] |
-        j < i ? log( V + E*exp(-A*j) + S ) :
-        log( V + E*exp(-A*j) + S ) + log1m(D), 0.5*log(sigma2_l));
-    }
   }
+  H += lp_l[nk+1] + head(lp_e, nk) - head(lp_l, nk);
 }
 
 model {
@@ -59,40 +54,21 @@ model {
   target += gamma_lpdf(A | 2.5, 10);
   target += normal_lpdf(S | 0, 0.1);
   target += beta_lpdf(D | 15, 1);
-  // target += beta_lpdf(H_raw | 10, 8);
-  // V ~ gamma(5, 4);
-  // E ~ gamma(2.5, 10);
-  // A ~ gamma(2.5, 10);
-  // S ~ normal(0, 0.1);
-  // D ~ beta(15, 1);
-  // H_raw ~ beta(10, 8);
 
   target += gamma_lpdf(sigma2_n | 3, 2);
   target += gamma_lpdf(sigma2_l | 3, 2);
-  // sigma2_n ~ gamma(3, 2);
-  // sigma2_l ~ gamma(3, 2);
 
   {
     vector[nk] mu_n;
-    // vector[nk] mu_l;
     // Likelihood distribution for model
     for (trial in 1:nk) {
       // We log mu so that the paramters directly determine the median so it's
       // easier to interpret; thus we use mu -> log(mu) so that
       // median(lognorm(z | log(mu), sigma)) = exp(log(mu)) = mu
       mu_n[trial] = log( V + E*exp(-A*trial) );
-      // mu_l[trial] = log( V + E*exp(-A*trial) + S ) + step(trial - H)*log1m(D);
-      // if (trial >= H) {
-      //   mu_l[trial] = log( V + E*exp(-A*trial) + S ) + log1m( D );
-      // } else {
-      //   mu_l[trial] = log( V + E*exp(-A*trial) + S );
-      // }
     }
     target += lognormal_lpdf(yn | mu_n, 0.5*log(sigma2_n));
-    // target += lognormal_lpdf(yl | mu_l, 0.5*log(sigma2_l));
     target += log_sum_exp(H);
-    // yn ~ lognormal( mu_n, 0.5*log(sigma2_n) );
-    // yl ~ lognormal( mu_l, 0.5*log(sigma2_l) );
   }
 }
 
