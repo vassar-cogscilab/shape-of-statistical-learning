@@ -80,7 +80,7 @@ toc()
 
 
 tic()
-fit_171 <- data_fit(exp1, sub_ids = c(171), n_chains = 1, n_iterations = 1000, adapt_delta = 0.9, max_treedepth = 10, models = c("no_learning"))
+fit_171 <- data_fit(exp1, sub_ids = c(171), n_chains = 1, n_iterations = 1000, adapt_delta = 0.9, max_treedepth = 10, models = c("step_learning"))
 toc()
 save(fit_171, compress = "xz", compression_level = 9,
      file = paste0(fit_path, "pieces/fit_171.Rds"))
@@ -91,7 +91,7 @@ launch_shinystan(fit_171[["171"]][["symmetric_logistic_learning"]])
 
 
 fit_74[["74"]][["step_learning"]]
-fit_171[["171"]][["no_learning"]]
+fit_171[["171"]][["step_learning"]]
 
 pairs(fit_171[["171"]][["no_learning"]],
   pars = c("V", "E", "A", "S"))
@@ -108,6 +108,10 @@ library("tictoc")
 
 
 ### LOO
+tic()
+loo_fits_74 <- loo_fit(fit_74, sub_ids = c(74))
+toc()
+
 tic()
 loo_fits_171 <- loo_fit(fit_171, sub_ids = c(171))
 toc()
@@ -224,13 +228,13 @@ plot_waic_fit(waic_fits_171)
 ########## Visualize Model Fits
 load(file = "experiment-1/kendal-model/exp1.Rds")
 
-plot_post_pred(fit_74, exp1, models = "step_learning")
-plot_model_est(fit_74, exp1, models = "step_learning")
+plot_post_pred(fit_74, exp1, models = c("step_learning"))
+plot_model_est(fit_74, exp1, models = c("step_learning"))
 
 
 
-plot_post_pred(fit_171, exp1)
-plot_model_est(fit_171, exp1, models = "no_learning")
+plot_post_pred(fit_171, exp1, models = c("step_learning"))
+plot_model_est(fit_171, exp1, models = c("step_learning"))
 
 
 

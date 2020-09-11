@@ -20,9 +20,9 @@ data { // these values are input to the sampling function
   vector<lower=0, upper=2>[nk] yl; // RT data from the individual for each trial of is_predictable=1
 }
 
-transformed data { // manipulations of the input data
-  real log_unif = -log(nk);
-}
+// transformed data { // manipulations of the input data
+//   real log_unif = -log(nk);
+// }
 
 parameters { // define parameters (and their bounds) used in the model
   real<lower=0, upper=2> V;  // vertical shift of all repsonse times
@@ -40,8 +40,10 @@ parameters { // define parameters (and their bounds) used in the model
 transformed parameters { // manipulations of the parameters (really, just their bounds)
   // real H = H_raw * nk;
   real D = D_raw * V;
-  vector[nk] H = rep_vector(log_unif, nk);
+  // vector[nk] H = rep_vector(log_unif, nk);
+  vector[nk] H;
   for (i in 1:nk) {
+    H[i] = -lbeta(10, 8) + 9*log((i+0.0)/nk) + 7*log(1 - (i+0.0)/nk);
     for (j in 1:nk) {
       H[i] += lognormal_lpdf(yl[j] |
         j < i ? log( V + E*exp(-A*j) + S ) :
