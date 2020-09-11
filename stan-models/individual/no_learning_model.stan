@@ -21,15 +21,21 @@ parameters { // define parameters (and their bounds) used in the model
 
 model {
   // Prior distributions on parameters
-  V ~ gamma(2.5, 2.5);
-  E ~ gamma(2.5, 10);
-  A ~ gamma(2.5, 10);
-  S ~ normal(0, 0.5);
+  target += gamma_lpdf(V | 5, 4);
+  target += gamma_lpdf(E | 2.5, 10);
+  target += gamma_lpdf(A | 2.5, 10);
+  target += normal_lpdf(S | 0, 0.1);
+  // V ~ gamma(5, 4);
+  // E ~ gamma(2.5, 10);
+  // A ~ gamma(2.5, 10);
+  // S ~ normal(0, 0.1);
 
-  sigma2_n ~ gamma(3, 2);
-  sigma2_l ~ gamma(3, 2);
+  target += gamma_lpdf(sigma2_n | 3, 2);
+  target += gamma_lpdf(sigma2_l | 3, 2);
+  // sigma2_n ~ gamma(3, 2);
+  // sigma2_l ~ gamma(3, 2);
 
-  for (dummy in 1:1) {
+  {
     vector[nk] mu_n;
     vector[nk] mu_l;
     // Likelihood distribution for model
@@ -41,8 +47,10 @@ model {
       mu_l[trial] = log( V + E*exp(-A*trial) + S );
     }
 
-    yn ~ lognormal( mu_n, 0.5*log(sigma2_n) );
-    yl ~ lognormal( mu_l, 0.5*log(sigma2_l) );
+    target += lognormal_lpdf(yn | mu_n, 0.5*log(sigma2_n));
+    target += lognormal_lpdf(yl | mu_l, 0.5*log(sigma2_l));
+    // yn ~ lognormal( mu_n, 0.5*log(sigma2_n) );
+    // yl ~ lognormal( mu_l, 0.5*log(sigma2_l) );
   }
 }
 
@@ -51,7 +59,7 @@ generated quantities {
   real ylpred[nk];
   real log_lik[nk];
 
-  for (dummy in 1:1) {
+  {
     vector[nk] mu_n;
     vector[nk] mu_l;
     for (trial in 1:nk) {
