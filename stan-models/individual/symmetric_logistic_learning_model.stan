@@ -33,6 +33,7 @@ model {
   target += gamma_lpdf(E | 2.5, 10);
   target += gamma_lpdf(A | 2.5, 10);
   target += normal_lpdf(S | 0, 0.1);
+  
   target += beta_lpdf(D | 15, 1);
   target += gamma_lpdf(L | 12, 36);
   target += beta_lpdf(H_raw | 10, 8);

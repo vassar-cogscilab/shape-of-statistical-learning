@@ -75,12 +75,12 @@ library("tictoc")
 load(file = "experiment-1/kendal-model/exp1.Rds")
 
 tic()
-fit_74 <- data_fit(exp1, sub_ids = c(74), n_chains = 1, n_iterations = 1000, adapt_delta = 0.9, max_treedepth = 10, models = c("step_learning"))
+fit_74 <- data_fit(exp1, sub_ids = c(74), n_chains = 1, n_iterations = 1000, adapt_delta = 0.9, max_treedepth = 10)
 toc()
-
+pairs(fit_74[["74"]][["symmetric_logistic_learning"]], pars = c("V", "E", "A", "S", "D", "L", "H"))
 
 tic()
-fit_171 <- data_fit(exp1, sub_ids = c(171), n_chains = 1, n_iterations = 1000, adapt_delta = 0.9, max_treedepth = 10, models = c("step_learning"))
+fit_171 <- data_fit(exp1, sub_ids = c(171), n_chains = 1, n_iterations = 1000, adapt_delta = 0.9, max_treedepth = 10)
 toc()
 save(fit_171, compress = "xz", compression_level = 9,
      file = paste0(fit_path, "pieces/fit_171.Rds"))
@@ -228,13 +228,13 @@ plot_waic_fit(waic_fits_171)
 ########## Visualize Model Fits
 load(file = "experiment-1/kendal-model/exp1.Rds")
 
-plot_post_pred(fit_74, exp1, models = c("step_learning"))
-plot_model_est(fit_74, exp1, models = c("step_learning"))
+plot_post_pred(fit_74, exp1)
+plot_model_est(fit_74, exp1)
 
 
 
-plot_post_pred(fit_171, exp1, models = c("step_learning"))
-plot_model_est(fit_171, exp1, models = c("step_learning"))
+plot_post_pred(fit_171, exp1)
+plot_model_est(fit_171, exp1)
 
 
 
@@ -251,9 +251,9 @@ plot_prior_est(ntrials = 100, ndraws = 1000)
 
 
 y <- seq(0, 1, by = 0.01)
-plot(y, dbeta(y, 10, 8))
+plot(y, dbeta(y, 1.2, 1))
 
-x <- seq(0, 4, by = 0.01)
+x <- seq(0, 6, by = 0.01)
 plot(x, dgamma(x, 12, 36))
   abline(v = .1, lty = "dashed", col = "blue")
   abline(v = .75, lty = "dashed", col = "blue")
