@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH -J run_models           	# job name
+#SBATCH -o run_models.out      	# output and error file name
+#SBATCH --nodes=3 		# total number of nodes to run job on
+#SBATCH --ntasks-per-node=48  	# number of CPUs per node to run job on
+#SBATCH -p general     	# queue (partition) – general, emc
+#SBATCH -t 01:30:00        	# run time (hh:mm:ss) - 1.5 hours
+#SBATCH --mail-user=kendal.foster@alum.vassar.edu
+#SBATCH --mail-type=begin  	# email me when the job starts
+#SBATCH --mail-type=end    	# email me when the job finishes
+
+#commands to execute the job appear below the header
+
+Rscript home/kendalfoster/run_models.R
+
+# grab 3 48-core nodes
+# on each core, fit one individual with the four models. do in batches of 48 (number of cores) individuals
